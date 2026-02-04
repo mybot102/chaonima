@@ -85,47 +85,85 @@ npm run build
 
 ## Configuration
 
-The extension now supports runtime configuration through the Settings page. Users can configure:
+The extension supports runtime configuration through the Settings page:
 
-1. **V2EX Personal Access Token** - Required for accessing V2EX API
-   - Get your token at: https://www.v2ex.com/settings/tokens
-   - Used to fetch topic content and replies via V2EX API 2.0
-2. **AI API Key** - Required for AI summarization
-   - Gemini: https://aistudio.google.com/app/apikey
-   - OpenAI: https://platform.openai.com/api-keys
+1. **OpenAI Base URL** (Optional) - Custom OpenAI API endpoint
+   - Leave empty to use official OpenAI API (`https://api.openai.com/v1`)
+   - Azure OpenAI: `https://your-resource.openai.azure.com`
+   - Local services: `http://localhost:11434/v1` (Ollama), `http://localhost:1234/v1` (LM Studio)
+   - Only affects OpenAI/GPT models, Gemini models use fixed endpoint
+
+2. **AI API Key** (Required) - API key for AI service
+   - Gemini: Get at https://aistudio.google.com/app/apikey
+   - OpenAI: Get at https://platform.openai.com/api-keys
    - Extension calls AI API directly (no backend proxy)
-3. **Model** - AI model selection
-   - Select from common models: Gemini, GPT, Claude series
+
+3. **V2EX Personal Access Token** (Required) - For V2EX API access
+   - Get at: https://www.v2ex.com/settings/tokens
+   - Used to fetch topic content and replies via V2EX API 2.0
+
+4. **Model** - AI model selection
+   - Select from common models: Gemini, GPT series
    - Or input custom model name
    - Auto-detects API provider based on model name
-4. **Thinking Mode** - Enable/disable thinking mode (Gemini models only)
 
-### Architecture (v2.0 - Backend-Free)
+5. **Thinking Mode** - Enable/disable thinking mode (Gemini models only)
+
+### Architecture
 
 ```
-Browser Extension → V2EX API (fetch content) → AI API (Gemini/OpenAI) directly
+Browser Extension → V2EX API (fetch content) → AI API (Gemini/OpenAI)
 ```
 
 **How it works:**
-1. Extension fetches topic and replies from V2EX API 2.0
-2. Extension directly calls Gemini or OpenAI API for summarization
+1. Extension fetches topic and replies from V2EX API 2.0 (fixed endpoint: `https://www.v2ex.com/api/v2/`)
+2. Extension calls AI API based on model type:
+   - Gemini models → Gemini API (fixed endpoint)
+   - GPT models → OpenAI API (customizable base URL)
 3. Results stream back to user
 
-**Benefits:**
-- ✅ No backend server needed
-- ✅ More private (data goes directly from user to AI)
-- ✅ Faster (one less hop)
-- ✅ Simpler (only need two tokens)
+**Supported AI Endpoints:**
+- ✅ OpenAI Official API (default)
+- ✅ Azure OpenAI (custom base URL)
+- ✅ Local OpenAI-compatible services (Ollama, LM Studio)
+- ✅ Gemini API (fixed endpoint)
 
-**Auto Provider Detection:**
-- Gemini models → Calls Gemini API
-- GPT/O1 models → Calls OpenAI API  
-- Claude models → Calls OpenAI API (compatible format)
+### Configuration Examples
+
+#### Using OpenAI Official API
+```
+OpenAI Base URL: (leave empty)
+AI API Key: sk-proj-...
+Model: gpt-4o
+```
+
+#### Using Azure OpenAI
+```
+OpenAI Base URL: https://your-resource.openai.azure.com
+AI API Key: your-azure-key
+Model: gpt-4o
+```
+
+#### Using Local Ollama
+```
+OpenAI Base URL: http://localhost:11434/v1
+AI API Key: (can be empty)
+Model: llama3
+```
+
+#### Using Google Gemini
+```
+OpenAI Base URL: (leave empty or any, doesn't affect Gemini)
+AI API Key: AIza...
+Model: gemini-2.5-flash-preview-09-2025
+```
+
+### V2EX API
 
 The extension uses V2EX API 2.0 Beta to fetch topic content:
+- Fixed endpoint: `https://www.v2ex.com/api/v2/`
 - No page navigation required (better UX)
 - Automatically fetches all replies (pagination handled)
-- More stable and efficient than DOM scraping
 - Rate limit: 120 requests/hour
 
 To access settings:
