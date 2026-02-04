@@ -106,10 +106,10 @@ function App() {
 
         <div className="bg-white shadow rounded-lg p-6">
           <div className="space-y-6">
-            {/* API URL */}
-            <div>
+            {/* API URL - 已弃用 */}
+            <div className="opacity-50">
               <label htmlFor="apiUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                后端 API 地址
+                后端 API 地址（已弃用）
               </label>
               <input
                 type="url"
@@ -117,31 +117,49 @@ function App() {
                 value={config.apiUrl}
                 onChange={(e) => setConfig({ ...config, apiUrl: e.target.value })}
                 placeholder="https://your-backend-server.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
               />
               <p className="mt-1 text-sm text-gray-500">
-                Chaonima 后端服务的地址（留空使用默认服务器）
-              </p>
-              <p className="mt-1 text-xs text-gray-400">
-                ⚠️ 注意：这不是 OpenAI/Gemini API 地址，而是 Chaonima 后端代理服务器地址
+                此配置项已废弃，扩展现在直接调用 AI API
               </p>
             </div>
 
-            {/* API Key */}
+            {/* AI API Key */}
             <div>
               <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-2">
-                后端 API 密钥
+                AI API Key
               </label>
               <input
                 type="password"
                 id="apiKey"
                 value={config.apiKey}
                 onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                placeholder="your-backend-api-key"
+                placeholder="Gemini: AIza... 或 OpenAI: sk-..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="mt-1 text-sm text-gray-500">
-                Chaonima 后端服务的访问密钥（留空使用默认服务器）
+                您的 AI 服务 API 密钥（Gemini 或 OpenAI）
+              </p>
+              <p className="mt-1 text-xs text-blue-600">
+                💡 获取 API Key：
+                <a 
+                  href="https://aistudio.google.com/app/apikey" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-800 ml-1"
+                >
+                  Gemini
+                </a>
+                {' '}或{' '}
+                <a 
+                  href="https://platform.openai.com/api-keys" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-800"
+                >
+                  OpenAI
+                </a>
               </p>
             </div>
 
@@ -258,14 +276,15 @@ function App() {
         <div className="mt-8 text-center">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <p className="text-sm text-blue-800 font-medium mb-2">
-              ℹ️ 关于架构说明
+              ℹ️ 新架构说明（v2.0）
             </p>
             <p className="text-xs text-blue-700 text-left">
-              Chaonima 使用三层架构：<br/>
-              <span className="font-mono">浏览器扩展 → 后端代理服务 → AI 服务（Gemini/OpenAI/Claude）</span><br/><br/>
-              • <strong>后端 API 地址</strong>：Chaonima 后端服务器，用于代理和缓存 AI 请求<br/>
-              • <strong>模型选择</strong>：后端服务器会将您的选择转发给对应的 AI 服务<br/>
-              • 默认情况下使用公共后端服务器，您也可以部署自己的后端服务
+              Chaonima 现在使用直连架构，无需后端服务器：<br/>
+              <span className="font-mono">浏览器扩展 → V2EX API（获取内容）→ 直接调用 AI API（Gemini/OpenAI）</span><br/><br/>
+              • <strong>V2EX Token</strong>：用于从 V2EX 获取帖子和回复数据<br/>
+              • <strong>AI API Key</strong>：用于直接调用 Gemini 或 OpenAI 进行总结<br/>
+              • <strong>无需后端</strong>：扩展直接调用 API，更快更私密<br/>
+              • 根据选择的模型自动识别使用 Gemini 还是 OpenAI
             </p>
           </div>
           <p className="text-sm text-gray-500">

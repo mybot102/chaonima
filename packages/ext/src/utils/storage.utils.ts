@@ -3,8 +3,8 @@ import * as z from 'zod';
 
 // 定义配置类型
 export const ConfigSchema = z.object({
-  apiUrl: z.string().url().optional(),
-  apiKey: z.string().optional(),
+  apiUrl: z.string().url().optional(), // 已弃用，保留用于向后兼容
+  apiKey: z.string().optional(), // AI API Key (Gemini/OpenAI)
   model: z.string().optional(),
   enableThinking: z.boolean().optional(),
   v2exToken: z.string().optional(),

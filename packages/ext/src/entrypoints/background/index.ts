@@ -18,7 +18,7 @@ import {
 } from '@/utils/message';
 import { getConfig } from '@/utils/storage.utils';
 import { extractTopicId, getTopic, getAllTopicReplies, formatTopicForAI } from '@/utils/v2ex-api.utils';
-import { fetchTextStream } from 'preview/plain';
+import { callAIStream } from '@/utils/ai-client.utils';
 import * as z from 'zod';
 
 export default defineBackground(() => {
@@ -72,20 +72,7 @@ const handler = {
       }
     }
 
-    browser.tabs.sendMessage(tab.id, {
-      type: MESSAGE_CHECKING_REMOTE_SAVED,
-    } satisfies z.infer<typeof MessageCheckingRemoteSaved>);
-    
-    const text = await fetchSummary(id);
-    if (text) {
-      browser.tabs.sendMessage(tab.id, {
-        type: MESSAGE_REMOTE_TEXT,
-        payload: { text },
-      } satisfies z.infer<typeof MessageRemoteText>);
-      return;
-    }
-
-    // 使用 V2EX API 获取数据
+    // 使用 V2EX API 获取数据并直接调用 AI
     if (!msg.payload.checkState) {
       PostByUrl.set(id, { time: Date.now(), url: id });
       deletePost10MinLater(id);
@@ -163,39 +150,35 @@ async function getChaonima(text: string, id: string, tab: Tab) {
   const port = browser.tabs.connect(tab.id!);
   const config = await getConfig();
 
-  let ret = '';
   let firstChunk = true;
-  function onmessage(text: string) {
-    ret += text;
+  function onChunk(chunkText: string) {
     const msg = {
       type: MESSAGE_LLM_TEXT_CHUNK,
-      payload: { text, firstChunk },
+      payload: { text: chunkText, firstChunk },
     } satisfies z.infer<typeof MessageLlmTextChunk>;
     port.postMessage(msg);
     firstChunk = false;
   }
 
-  const apiBaseUrl = config.apiUrl || import.meta.env.VITE_API_BASE_URL;
   const apiKey = config.apiKey || import.meta.env.VITE_API_KEY;
-  const url = `${apiBaseUrl}/api/v2ex/streamGenerateContent`;
+  const model = config.model || 'gemini-2.5-flash-preview-09-2025';
+  const enableThinking = config.enableThinking || false;
+  
+  if (!apiKey) {
+    const errorMsg = '请在设置中配置 AI API Key (Gemini 或 OpenAI)';
+    onChunk(errorMsg);
+    port.disconnect();
+    return;
+  }
   
   try {
-    await fetchTextStream(url, {
-      method: 'POST',
-      body: JSON.stringify({ 
-        text, 
-        id,
-        model: config.model,
-        enableThinking: config.enableThinking
-      }),
-      onmessage,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
-    });
+    // 直接调用 AI API（Gemini 或 OpenAI）
+    await callAIStream(apiKey, text, model, enableThinking, onChunk);
     PostByUrl.delete(id);
   } catch (e) {
+    logger.error('AI API call failed:', e);
+    const errorMsg = `AI 调用失败: ${e.message}\n\n请检查：\n1. API Key 是否正确\n2. 模型名称是否正确\n3. 网络连接是否正常`;
+    onChunk(errorMsg);
     port.disconnect();
   }
 }
@@ -204,14 +187,4 @@ function deletePost10MinLater(id: string) {
   setTimeout(() => {
     PostByUrl.delete(id);
   }, 600_000 /* 10 minutes */);
-}
-
-async function fetchSummary(id: string) {
-  const config = await getConfig();
-  const apiBaseUrl = config.apiUrl || import.meta.env.VITE_API_BASE_URL;
-  const apiKey = config.apiKey || import.meta.env.VITE_API_KEY;
-  const url = `${apiBaseUrl}/api/v2ex/summaries?${new URLSearchParams({ id })}`;
-  const res = await fetch(url, { headers: { 'x-api-key': apiKey } });
-  if (!res.ok) return;
-  return await res.text();
 }
