@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getConfig, saveConfig, resetConfig, type Config } from '@/utils/storage.utils';
 import { ChaonimaLogo } from 'preview/react';
+import { fetchModelsList } from '@/utils/ai-client.utils';
 
 // 预定义的常用模型（所有模型都使用 OpenAI 兼容 API）
 const COMMON_MODELS = [
@@ -23,16 +24,27 @@ function App() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCustomModel, setIsCustomModel] = useState(false);
+  const [availableModels, setAvailableModels] = useState<Array<{ id: string; name?: string }>>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
   useEffect(() => {
     loadConfig();
   }, []);
 
   useEffect(() => {
-    // 检查当前模型是否在预定义列表中
-    const isInList = COMMON_MODELS.some(m => m.value === config.model);
-    setIsCustomModel(!isInList && config.model !== '');
-  }, [config.model]);
+    // 检查当前模型是否在预定义列表或可用模型列表中
+    const isInCommonList = COMMON_MODELS.some(m => m.value === config.model);
+    const isInAvailableList = availableModels.some(m => m.id === config.model);
+    setIsCustomModel(!isInCommonList && !isInAvailableList && config.model !== '');
+  }, [config.model, availableModels]);
+
+  // 当 API 配置变化时，自动获取模型列表
+  useEffect(() => {
+    if (config.apiKey && config.apiUrl !== undefined) {
+      loadModelsList();
+    }
+  }, [config.apiKey, config.apiUrl]);
 
   const loadConfig = async () => {
     try {
@@ -73,12 +85,38 @@ function App() {
     if (value === 'custom') {
       setIsCustomModel(true);
       // 保持当前模型值或清空
-      if (COMMON_MODELS.some(m => m.value === config.model)) {
+      if (COMMON_MODELS.some(m => m.value === config.model) || 
+          availableModels.some(m => m.id === config.model)) {
         setConfig({ ...config, model: '' });
       }
     } else {
       setIsCustomModel(false);
       setConfig({ ...config, model: value });
+    }
+  };
+
+  const loadModelsList = async () => {
+    if (!config.apiKey) {
+      setAvailableModels([]);
+      setModelsError(null);
+      return;
+    }
+
+    setLoadingModels(true);
+    setModelsError(null);
+
+    try {
+      const models = await fetchModelsList(config.apiKey, config.apiUrl);
+      setAvailableModels(models);
+      if (models.length === 0) {
+        setModelsError('未获取到模型列表（API 可能不支持此功能）');
+      }
+    } catch (error) {
+      console.error('Failed to load models list:', error);
+      setModelsError('获取模型列表失败');
+      setAvailableModels([]);
+    } finally {
+      setLoadingModels(false);
     }
   };
 
@@ -156,20 +194,43 @@ function App() {
 
             {/* Model */}
             <div>
-              <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
-                模型
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="model" className="block text-sm font-medium text-gray-700">
+                  模型
+                </label>
+                {config.apiKey && (
+                  <button
+                    type="button"
+                    onClick={loadModelsList}
+                    disabled={loadingModels}
+                    className="text-xs text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {loadingModels ? '加载中...' : '刷新模型列表'}
+                  </button>
+                )}
+              </div>
               <select
                 id="model"
                 value={isCustomModel ? 'custom' : config.model}
                 onChange={(e) => handleModelSelectChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {COMMON_MODELS.map(model => (
-                  <option key={model.value} value={model.value}>
-                    {model.label}
-                  </option>
-                ))}
+                <optgroup label="常用模型">
+                  {COMMON_MODELS.map(model => (
+                    <option key={model.value} value={model.value}>
+                      {model.label}
+                    </option>
+                  ))}
+                </optgroup>
+                {availableModels.length > 0 && (
+                  <optgroup label="可用模型">
+                    {availableModels.map(model => (
+                      <option key={model.id} value={model.id}>
+                        {model.name || model.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
                 <option value="custom">自定义模型...</option>
               </select>
               
@@ -195,6 +256,17 @@ function App() {
               <p className="mt-1 text-sm text-gray-500">
                 选择常用模型或输入自定义模型名称
               </p>
+              {loadingModels && (
+                <p className="mt-1 text-xs text-blue-600">正在获取模型列表...</p>
+              )}
+              {modelsError && !loadingModels && (
+                <p className="mt-1 text-xs text-orange-600">{modelsError}</p>
+              )}
+              {availableModels.length > 0 && !loadingModels && (
+                <p className="mt-1 text-xs text-green-600">
+                  已获取 {availableModels.length} 个可用模型
+                </p>
+              )}
             </div>
 
             {/* V2EX Token */}

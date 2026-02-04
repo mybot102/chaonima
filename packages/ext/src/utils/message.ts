@@ -87,3 +87,9 @@ export const MessageThinkingChunk = z.object({
     text: z.string(),
   }),
 });
+
+export const MESSAGE_AI_PROCESSING = 'MESSAGE_AI_PROCESSING';
+
+export const MessageAIProcessing = z.object({
+  type: z.literal(MESSAGE_AI_PROCESSING),
+});

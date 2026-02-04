@@ -8,13 +8,22 @@ import * as z from 'zod';
 
 const loadingSignal = signal<boolean>(false);
 const progressSignal = signal<{ current: number; total: number; message?: string } | null>(null);
+const aiStatusSignal = signal<'idle' | 'processing' | 'thinking'>('idle');
 
 export function setLoading(v: boolean) {
   loadingSignal.value = v;
+  if (!v) {
+    // 当 loading 为 false 时，重置 AI 状态
+    aiStatusSignal.value = 'idle';
+  }
 }
 
 export function setProgress(progress: { current: number; total: number; message?: string } | null) {
   progressSignal.value = progress;
+}
+
+export function setAIStatus(status: 'idle' | 'processing' | 'thinking') {
+  aiStatusSignal.value = status;
 }
 
 export function Start() {
@@ -29,10 +38,15 @@ export function Start() {
   }, []);
   const progress = progressSignal.value;
   const loading = loadingSignal.value;
+  const aiStatus = aiStatusSignal.value;
   
   let buttonText = '他们在吵什么';
   if (loading) {
-    if (progress) {
+    if (aiStatus === 'thinking') {
+      buttonText = 'AI 思考中...';
+    } else if (aiStatus === 'processing') {
+      buttonText = 'AI 处理中...';
+    } else if (progress) {
       buttonText = `获取评论中... (${progress.current}/${progress.total})`;
     } else {
       buttonText = '读取评论中...';

@@ -19,6 +19,8 @@ import {
   MessageFetchProgress,
   MESSAGE_THINKING_CHUNK,
   MessageThinkingChunk,
+  MESSAGE_AI_PROCESSING,
+  MessageAIProcessing,
 } from '@/utils/message';
 import { getConfig } from '@/utils/storage.utils';
 import { extractTopicId, getTopic, getAllTopicReplies, formatTopicForAI } from '@/utils/v2ex-api.utils';
@@ -106,6 +108,13 @@ const handler = {
         
         // 格式化为文本
         const formattedText = formatTopicForAI(topic, replies);
+        
+        // 清除进度显示，通知开始 AI 处理
+        browser.tabs.sendMessage(tab.id!, {
+          type: MESSAGE_AI_PROCESSING,
+        } satisfies z.infer<typeof MessageAIProcessing>).catch(err => {
+          logger.warn('Failed to send AI processing message:', err);
+        });
         
         // 发送给 AI 总结
         getChaonima(formattedText, id, tab);

@@ -1,6 +1,6 @@
 import { browser, defineContentScript } from '#imports';
 import { ContentUi } from './ContentUi';
-import { setLoading, setProgress } from './Start';
+import { setLoading, setProgress, setAIStatus } from './Start';
 import { setGlobalContext, StartUi } from './StartUi';
 import {
   MESSAGE_LLM_TEXT_CHUNK,
@@ -20,6 +20,8 @@ import {
   MessageFetchProgress,
   MESSAGE_THINKING_CHUNK,
   MessageThinkingChunk,
+  MESSAGE_AI_PROCESSING,
+  MessageAIProcessing,
 } from '@/utils/message';
 import { appendText, appendThinking, clearAll } from 'preview/react';
 import * as z from 'zod';
@@ -116,6 +118,15 @@ function armListeners() {
         return false;
       }
 
+      case MESSAGE_AI_PROCESSING: {
+        MessageAIProcessing.parse(m);
+        // 清除进度显示，更新为 AI 处理状态
+        setProgress(null);
+        setLoading(true);
+        setAIStatus('processing');
+        return false;
+      }
+
       default: {
         throw new Error(`Unknown message type: ${m.type}`);
       }
@@ -147,6 +158,8 @@ function armListeners() {
           const message = MessageThinkingChunk.parse(m);
           const thinkingText = message.payload.text;
           appendThinking(thinkingText);
+          // 更新状态为思考中
+          setAIStatus('thinking');
           return false;
         }
         default: {

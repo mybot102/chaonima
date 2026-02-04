@@ -36,27 +36,78 @@ export async function callOpenAIStream(
   onThinking?: (text: string) => void,
   baseUrl?: string
 ): Promise<void> {
-  const instruction = `你是一个专业的社区内容总结助手，擅长分析和总结 V2EX 论坛的帖子和讨论。
+  const instruction = `你是一个专业的社区内容分析助手，擅长深入分析和总结 V2EX 论坛的帖子和讨论。
 
 ## 任务
-请仔细阅读用户提供的帖子内容和评论，然后用简洁、准确、易懂的语言进行总结。
+请仔细阅读用户提供的帖子内容和所有评论，进行深入、详细的分析和总结。
 
 ## 输出要求
-1. **帖子核心内容**：用 2-3 句话概括帖子的主要问题和观点
-2. **讨论焦点**：如果存在评论，总结大家在讨论什么核心话题
-3. **观点分歧**：如果存在争论，清晰概括各方的核心论点和立场
-4. **关键信息**：提取重要的技术细节、建议或结论（如有）
+
+### 1. 帖子核心内容
+用 2-3 句话概括帖子的主要问题、背景和作者的核心观点。
+
+### 2. 评论详细分析（如果存在评论）
+对评论进行深入、全面的分析，包括：
+
+**2.1 评论概览**
+- 评论总数和讨论规模
+- 评论的主要话题分布
+- 讨论的活跃程度和参与度
+
+**2.2 观点分类与总结**
+- 识别并分类不同的观点阵营（支持、反对、中立、补充等）
+- 总结每个阵营的核心论点和代表性评论
+- 分析观点的演变过程（如果有观点转变或深化）
+
+**2.3 关键讨论点**
+- 提取评论中反复提及的关键问题
+- 识别讨论中的技术难点、争议焦点
+- 总结评论中提出的解决方案、建议或经验分享
+
+**2.4 评论质量分析**
+- 识别高质量评论（包含技术细节、实际经验、解决方案等）
+- 总结评论中的实用信息（代码示例、工具推荐、最佳实践等）
+- 指出评论中的关键洞察和独到见解
+
+**2.5 互动模式分析**
+- 分析评论之间的回复关系（如果有）
+- 识别讨论中的共识点和分歧点
+- 总结讨论的结论或未解决的问题
+
+**2.6 观点分歧详细分析**
+如果存在争论，需要：
+- 详细列出各方的核心论点和支撑理由
+- 分析分歧的根本原因
+- 评估各方观点的合理性和局限性
+- 总结是否有达成共识的可能性
+
+### 3. 关键信息提取
+- 提取重要的技术细节、配置、代码片段
+- 总结评论中提到的工具、资源、链接
+- 记录重要的数据、统计信息或案例
+
+### 4. AI 观点
+基于对帖子 and 所有评论的深入分析，提供你的专业见解：
+- 对问题的深入理解和多角度分析
+- 可能的解决方案或改进建议
+- 对讨论中观点的综合评价和补充
+- 相关的背景知识、行业趋势或延伸思考
+- 指出讨论中可能遗漏的重要角度
 
 ## 格式要求
 - 使用自然流畅的中文，避免过于正式或生硬的表达
 - 直接开始总结，不要添加"好的"、"我来帮你"等客套话
-- 使用段落分隔不同内容，保持结构清晰
+- 使用清晰的段落和标题结构，便于阅读
+- 对于重要信息，可以使用列表或要点形式呈现
 - 如果帖子没有评论，只需总结帖子本身即可
+- AI 观点部分使用"**AI 观点**"作为小标题
 
 ## 语言风格
-- 简洁明了，避免冗余
-- 使用通俗易懂的表达，避免过于专业的术语（除非必要）
-- 保持客观中立，不要添加个人评价或情感色彩`;
+- 详细但不冗长，确保信息密度高
+- 使用通俗易懂的表达，但保留必要的技术术语
+- 保持客观中立，但在 AI 观点部分可以提供有价值的专业见解
+- AI 观点应该基于讨论内容，有理有据，避免空泛的评论
+- 对于评论分析，要深入挖掘，不要停留在表面总结`;
 
   const requestBody = {
     model,
@@ -147,6 +198,63 @@ export async function callOpenAIStream(
 export function getAPIProvider(model: string): 'openai' {
   // 所有模型都使用 OpenAI 兼容 API
   return 'openai';
+}
+
+/**
+ * OpenAI API 模型列表响应类型
+ */
+interface ModelsListResponse {
+  data: Array<{
+    id: string;
+    object?: string;
+    created?: number;
+    owned_by?: string;
+  }>;
+}
+
+/**
+ * 从 OpenAI 兼容 API 获取模型列表
+ */
+export async function fetchModelsList(
+  apiKey: string,
+  baseUrl?: string
+): Promise<Array<{ id: string; name?: string }>> {
+  const base = baseUrl || 'https://api.openai.com/v1';
+  const url = `${base}/models`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      // 如果 API 不支持或返回错误，返回空数组而不是抛出错误
+      console.warn('[获取模型列表] API 请求失败:', response.status, response.statusText);
+      return [];
+    }
+
+    const data: ModelsListResponse = await response.json();
+    
+    if (!data.data || !Array.isArray(data.data)) {
+      console.warn('[获取模型列表] 响应格式不正确');
+      return [];
+    }
+
+    // 转换并过滤模型列表
+    return data.data
+      .map(model => ({
+        id: model.id,
+        name: model.id, // 使用 id 作为 name，因为大多数 API 不提供单独的 name 字段
+      }))
+      .filter(model => model.id) // 过滤掉无效的模型 ID
+      .sort((a, b) => a.id.localeCompare(b.id)); // 按 ID 排序
+  } catch (error) {
+    console.error('[获取模型列表] 请求异常:', error);
+    return [];
+  }
 }
 
 /**
