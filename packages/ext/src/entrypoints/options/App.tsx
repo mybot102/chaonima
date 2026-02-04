@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { getConfig, saveConfig, resetConfig, type Config } from '@/utils/storage.utils';
 import { ChaonimaLogo } from 'preview/react';
 
+// 预定义的常用模型
+const COMMON_MODELS = [
+  { value: 'gemini-2.5-flash-preview-09-2025', label: 'Gemini 2.5 Flash Preview' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash Experimental' },
+  { value: 'gpt-4o', label: 'GPT-4o' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+  { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+  { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
+  { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+];
+
 function App() {
   const [config, setConfig] = useState<Config>({
     apiUrl: '',
@@ -11,10 +24,17 @@ function App() {
   });
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isCustomModel, setIsCustomModel] = useState(false);
 
   useEffect(() => {
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    // 检查当前模型是否在预定义列表中
+    const isInList = COMMON_MODELS.some(m => m.value === config.model);
+    setIsCustomModel(!isInList && config.model !== '');
+  }, [config.model]);
 
   const loadConfig = async () => {
     try {
@@ -43,10 +63,24 @@ function App() {
     try {
       await resetConfig();
       await loadConfig();
+      setIsCustomModel(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
       console.error('Failed to reset config:', error);
+    }
+  };
+
+  const handleModelSelectChange = (value: string) => {
+    if (value === 'custom') {
+      setIsCustomModel(true);
+      // 保持当前模型值或清空
+      if (COMMON_MODELS.some(m => m.value === config.model)) {
+        setConfig({ ...config, model: '' });
+      }
+    } else {
+      setIsCustomModel(false);
+      setConfig({ ...config, model: value });
     }
   };
 
@@ -114,19 +148,39 @@ function App() {
               </label>
               <select
                 id="model"
-                value={config.model}
-                onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                value={isCustomModel ? 'custom' : config.model}
+                onChange={(e) => handleModelSelectChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="gemini-2.5-flash-preview-09-2025">Gemini 2.5 Flash Preview</option>
-                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Experimental</option>
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                {COMMON_MODELS.map(model => (
+                  <option key={model.value} value={model.value}>
+                    {model.label}
+                  </option>
+                ))}
+                <option value="custom">自定义模型...</option>
               </select>
+              
+              {isCustomModel && (
+                <div className="mt-3">
+                  <label htmlFor="customModel" className="block text-sm font-medium text-gray-700 mb-2">
+                    自定义模型名称
+                  </label>
+                  <input
+                    type="text"
+                    id="customModel"
+                    value={config.model}
+                    onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                    placeholder="例如: claude-3-opus-20240229"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    输入任意 OpenAI 兼容的模型名称
+                  </p>
+                </div>
+              )}
+              
               <p className="mt-1 text-sm text-gray-500">
-                选择要使用的 AI 模型
+                选择常用模型或输入自定义模型名称
               </p>
             </div>
 
