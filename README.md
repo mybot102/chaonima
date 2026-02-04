@@ -8,20 +8,18 @@
 
 - 🤖 使用 AI 智能总结 V2EX 帖子和评论
 - ⚙️ 支持自定义 API 配置（URL、密钥、模型）
-- 🎯 支持多种 AI 模型（Gemini、GPT、Claude）及自定义模型
-- 🧠 支持启用/禁用思考模式
+- 🎯 支持所有 OpenAI 兼容的 AI 模型（GPT、Claude、本地模型等）
+- 🔄 自动获取可用模型列表
+- 🧠 支持启用/禁用思考模式（需要模型支持）
+- 📊 显示获取评论进度
 - 💾 本地存储配置，无需重新构建扩展
 - 🎨 美观的设置界面
 
 ## Install
 
-### 方式一：从 Chrome Web Store 安装（推荐）
+### 从源码构建安装
 
- <a href="https://chromewebstore.google.com/detail/chaonima-%E5%90%B5%E6%B3%A5%E9%A9%AC/hpjdgebpmeghdajniclmlfkbablmmnhc">Chrome Web Store</a>
-
-### 方式二：从源码构建安装
-
-如果你想从源码安装或进行开发，请按照以下步骤操作：
+本项目目前**未在 Chrome Web Store 上架**，需要从源码构建安装。请按照以下步骤操作：
 
 #### 1. 克隆仓库并安装依赖
 
@@ -35,10 +33,14 @@ bun install  # 或使用 npm install
 
 ```bash
 cd packages/ext
-bun run build  # 或使用 npm run build
+bun run build  # 构建 Chrome 扩展
+# 或
+bun run build:firefox  # 构建 Firefox 扩展
 ```
 
-构建完成后，扩展文件会生成在 `packages/ext/.output/chrome-mv3` 目录中。
+构建完成后，扩展文件会生成在项目根目录的 `dist` 文件夹中：
+- Chrome: `dist/chrome-mv3/`
+- Firefox: `dist/firefox-mv2/`
 
 #### 3. 在浏览器中加载扩展
 
@@ -46,55 +48,64 @@ bun run build  # 或使用 npm run build
 1. 打开浏览器，访问 `chrome://extensions/`
 2. 开启右上角的"开发者模式"
 3. 点击"加载已解压的扩展程序"
-4. 选择 `packages/ext/.output/chrome-mv3` 目录
+4. 选择项目根目录下的 `dist/chrome-mv3` 目录
 
 **Firefox:**
-```bash
-# 使用 Firefox 构建
-bun run build:firefox
-```
-然后访问 `about:debugging#/runtime/this-firefox`，点击"临时载入附加组件"，选择 `packages/ext/.output/firefox-mv2/manifest.json`。
+1. 访问 `about:debugging#/runtime/this-firefox`
+2. 点击"临时载入附加组件"
+3. 选择项目根目录下的 `dist/firefox-mv2/manifest.json` 文件
 
-> ⚠️ **重要提示**：不要尝试直接加载 `packages/ext` 源码目录，这会导致"清单文件缺失"错误。必须先构建，然后加载 `.output` 目录中的构建产物。
+> ⚠️ **重要提示**：不要尝试直接加载 `packages/ext` 源码目录，这会导致"清单文件缺失"错误。必须先构建，然后加载 `dist` 目录中的构建产物。
+
+#### 4. 从 GitHub Actions 下载构建产物（推荐）
+
+每次代码推送到 GitHub 后，GitHub Actions 会自动构建并打包扩展。你可以：
+1. 访问仓库的 [Actions](https://github.com/mybot102/chaonima/actions) 页面
+2. 选择最新的构建任务
+3. 在 Artifacts 部分下载构建好的扩展 ZIP 包或构建目录
+4. 解压后按照上述步骤加载到浏览器
 
 ## Configuration
 
 安装扩展后，点击扩展图标，然后点击"⚙️ 设置"按钮即可配置：
 
 - **OpenAI 基础地址**（可选）- 自定义 OpenAI API 端点（支持 Azure OpenAI、本地服务等，留空使用官方 API）
-- **AI API Key** - AI 服务的 API 密钥（[Gemini](https://aistudio.google.com/app/apikey) 或 [OpenAI](https://platform.openai.com/api-keys)）
+- **AI API Key** - AI 服务的 API 密钥（[OpenAI](https://platform.openai.com/api-keys) 或兼容 OpenAI API 的服务）
 - **V2EX Personal Access Token** - 用于访问 V2EX API 获取帖子内容（[获取 Token](https://www.v2ex.com/settings/tokens)）
-- **模型** - 选择 AI 模型（Gemini、GPT 系列）或输入自定义模型名称
-- **思考模式** - 启用后，模型会显示其思考过程（仅支持 Gemini 模型）
+- **模型** - 选择常用模型、从 API 自动获取的可用模型，或输入自定义模型名称
+- **思考模式** - 启用后，模型会显示其思考过程（需要模型支持）
 
 ### 架构说明
 
 Chaonima 使用直连架构，无需独立后端服务器：
 
 ```
-浏览器扩展 → V2EX API（获取内容）→ AI API（Gemini/OpenAI）
+浏览器扩展 → V2EX API（获取内容）→ OpenAI 兼容 API
 ```
 
 **工作流程：**
 1. **获取内容**：使用 V2EX API 获取帖子和回复（固定端点：`https://www.v2ex.com/api/v2/`）
-2. **AI 总结**：根据模型类型调用对应 AI API
-   - Gemini 模型 → Gemini API
-   - GPT 模型 → OpenAI API（支持自定义 base URL）
-3. **显示结果**：流式显示 AI 生成的总结
+   - 自动翻页获取所有评论
+   - 显示获取进度
+2. **AI 总结**：调用 OpenAI 兼容 API 进行总结
+   - 所有模型统一使用 OpenAI API 格式
+   - 支持自定义 base URL（可用于 Azure OpenAI、本地服务等）
+   - 流式显示 AI 生成的总结
+   - 支持显示模型的思考过程（如果启用且模型支持）
 
 **支持的 AI 端点：**
-- ✅ OpenAI 官方 API（默认）
+- ✅ OpenAI 官方 API（默认：`https://api.openai.com/v1`）
 - ✅ Azure OpenAI（自定义 base URL）
-- ✅ 本地 OpenAI 兼容服务（Ollama、LM Studio 等）
-- ✅ Gemini API（固定端点）
+- ✅ 本地 OpenAI 兼容服务（Ollama、LM Studio、vLLM 等）
+- ✅ 其他兼容 OpenAI API 的服务
 
 ### 配置示例
 
 #### 使用 OpenAI 官方 API
 ```
-OpenAI 基础地址：（留空）
+OpenAI 基础地址：（留空，使用默认值）
 AI API Key: sk-proj-...
-模型: gpt-4o
+模型: gpt-4o 或 gpt-4o-mini
 ```
 
 #### 使用 Azure OpenAI
@@ -107,16 +118,25 @@ AI API Key: Azure API Key
 #### 使用本地 Ollama
 ```
 OpenAI 基础地址：http://localhost:11434/v1
-AI API Key: 可留空
-模型: llama3
+AI API Key: ollama（可留空，某些版本需要）
+模型: llama3 或 qwen2.5
 ```
 
-#### 使用 Google Gemini
+#### 使用本地 LM Studio
 ```
-OpenAI 基础地址：（留空或任意，不影响）
-AI API Key: AIza...
-模型: gemini-2.5-flash-preview-09-2025
+OpenAI 基础地址：http://localhost:1234/v1
+AI API Key: lm-studio（可留空）
+模型: 你本地运行的模型名称
 ```
+
+#### 使用其他兼容 OpenAI API 的服务
+```
+OpenAI 基础地址：你的服务地址
+AI API Key: 你的 API Key
+模型: 服务支持的模型名称
+```
+
+> 💡 **提示**：设置页面支持自动获取可用模型列表。配置好 API Key 和基础地址后，点击"刷新模型列表"即可看到该服务支持的所有模型。
 
 ### V2EX API 使用
 
@@ -128,25 +148,52 @@ AI API Key: AIza...
 
 ## Development
 
-- __`packages/ext`__, browser extension code, the extension is built using [WXT](https://wxt.dev/).
-- __`packages/api`__, a simple backend service built with Deno. The service is running on [Deno Deploy Classic](https://docs.deno.com/deploy/manual/).
-- __`packages/preview`__, Vite based React app for preview components for the extension.
+### 项目结构
 
-Some quick commands to get started:
+- **`packages/ext`** - 浏览器扩展代码，使用 [WXT](https://wxt.dev/) 构建
+- **`packages/preview`** - 基于 Vite 的 React 应用，用于预览扩展组件
+- **`packages/api`** - Deno 后端服务（已弃用，扩展现在直接调用 AI API）
+
+### 开发命令
 
 ```sh
-# install deps
+# 安装依赖
 bun install
 
-# develop the extension
-bun run -F ext dev
+# 开发模式运行扩展（Chrome）
+cd packages/ext
+bun run dev
 
-# build the extension for production
-bun run -F ext build
+# 开发模式运行扩展（Firefox）
+cd packages/ext
+bun run dev:firefox
 
-# develop the preview app
+# 构建生产版本（Chrome）
+cd packages/ext
+bun run build
+
+# 构建生产版本（Firefox）
+cd packages/ext
+bun run build:firefox
+
+# 打包成 ZIP（Chrome）
+cd packages/ext
+bun run zip
+
+# 打包成 ZIP（Firefox）
+cd packages/ext
+bun run zip:firefox
+
+# 开发预览应用
 bun run -F preview dev
 ```
+
+### 构建输出
+
+构建产物位于项目根目录的 `dist` 文件夹：
+- Chrome: `dist/chrome-mv3/`
+- Firefox: `dist/firefox-mv2/`
+- ZIP 包: `dist/*.zip`
 
 ### 📚 详细文档
 
@@ -159,8 +206,26 @@ bun run -F preview dev
 **问：为什么浏览器提示"清单文件缺失"？**
 
 答：你可能尝试直接加载源码目录。正确做法是：
-1. 先运行 `bun run -F ext build` 构建扩展
-2. 在浏览器中加载 `packages/ext/.output/chrome-mv3` 目录
+1. 先运行 `cd packages/ext && bun run build` 构建扩展
+2. 在浏览器中加载项目根目录下的 `dist/chrome-mv3` 目录
 
 详见 [快速开始指南](./packages/ext/QUICK_START.md)。
+
+**问：如何获取最新版本的扩展？**
+
+答：本项目未在 Chrome Web Store 上架，获取最新版本的方式：
+1. 从 GitHub Actions 下载构建产物（推荐）
+2. 从源码构建安装
+
+**问：支持哪些 AI 模型？**
+
+答：支持所有兼容 OpenAI API 格式的模型，包括：
+- OpenAI 官方模型（GPT-4o、GPT-4o-mini、GPT-3.5-turbo 等）
+- Azure OpenAI 服务
+- 本地模型（Ollama、LM Studio、vLLM 等）
+- 其他兼容 OpenAI API 的服务
+
+**问：如何获取可用模型列表？**
+
+答：在设置页面配置好 API Key 和基础地址后，系统会自动获取可用模型列表，你也可以点击"刷新模型列表"手动刷新。
 

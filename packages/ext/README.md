@@ -27,9 +27,9 @@ bun run dev:firefox  # Firefox
 
 3. **在浏览器中加载**
 
-开发模式会在 `.output` 目录生成扩展文件：
-- Chrome: 加载 `.output/chrome-mv3` 目录
-- Firefox: 加载 `.output/firefox-mv2` 目录
+开发模式会在项目根目录的 `dist` 目录生成扩展文件：
+- Chrome: 加载 `dist/chrome-mv3` 目录
+- Firefox: 加载 `dist/firefox-mv2` 目录
 
 ## Build for Production
 
@@ -47,7 +47,7 @@ bun run zip        # Chrome
 bun run zip:firefox  # Firefox
 ```
 
-打包后的 zip 文件位于 `.output` 目录，可用于发布到扩展商店。
+打包后的 zip 文件位于项目根目录的 `dist` 目录。
 
 ## Troubleshooting
 
@@ -59,8 +59,8 @@ bun run zip:firefox  # Firefox
 
 **解决方案：**
 1. 确保已运行 `bun run build` 或 `bun run dev`
-2. 在浏览器中加载 `packages/ext/.output/chrome-mv3` 目录，而不是 `packages/ext` 目录
-3. 检查 `.output` 目录是否存在且包含 `manifest.json` 文件
+2. 在浏览器中加载项目根目录下的 `dist/chrome-mv3` 目录，而不是 `packages/ext` 目录
+3. 检查 `dist/chrome-mv3` 目录是否存在且包含 `manifest.json` 文件
 
 运行构建检查脚本：
 ```bash
@@ -91,11 +91,11 @@ The extension supports runtime configuration through the Settings page:
    - Leave empty to use official OpenAI API (`https://api.openai.com/v1`)
    - Azure OpenAI: `https://your-resource.openai.azure.com`
    - Local services: `http://localhost:11434/v1` (Ollama), `http://localhost:1234/v1` (LM Studio)
-   - Only affects OpenAI/GPT models, Gemini models use fixed endpoint
+   - All models use OpenAI-compatible API format
 
 2. **AI API Key** (Required) - API key for AI service
-   - Gemini: Get at https://aistudio.google.com/app/apikey
    - OpenAI: Get at https://platform.openai.com/api-keys
+   - Or use API key from OpenAI-compatible services
    - Extension calls AI API directly (no backend proxy)
 
 3. **V2EX Personal Access Token** (Required) - For V2EX API access
@@ -103,30 +103,34 @@ The extension supports runtime configuration through the Settings page:
    - Used to fetch topic content and replies via V2EX API 2.0
 
 4. **Model** - AI model selection
-   - Select from common models: Gemini, GPT series
+   - Select from common models (GPT series, Claude series)
+   - Auto-fetch available models from API (if supported)
    - Or input custom model name
-   - Auto-detects API provider based on model name
+   - All models use OpenAI-compatible API format
 
-5. **Thinking Mode** - Enable/disable thinking mode (Gemini models only)
+5. **Thinking Mode** - Enable/disable thinking mode (requires model support)
 
 ### Architecture
 
 ```
-Browser Extension → V2EX API (fetch content) → AI API (Gemini/OpenAI)
+Browser Extension → V2EX API (fetch content) → OpenAI-compatible API
 ```
 
 **How it works:**
 1. Extension fetches topic and replies from V2EX API 2.0 (fixed endpoint: `https://www.v2ex.com/api/v2/`)
-2. Extension calls AI API based on model type:
-   - Gemini models → Gemini API (fixed endpoint)
-   - GPT models → OpenAI API (customizable base URL)
-3. Results stream back to user
+   - Automatically paginates to fetch all comments
+   - Shows progress during fetching
+2. Extension calls OpenAI-compatible API for summarization
+   - All models use OpenAI API format
+   - Supports custom base URL (for Azure OpenAI, local services, etc.)
+   - Streams results back to user
+   - Supports thinking mode (if enabled and model supports it)
 
 **Supported AI Endpoints:**
-- ✅ OpenAI Official API (default)
+- ✅ OpenAI Official API (default: `https://api.openai.com/v1`)
 - ✅ Azure OpenAI (custom base URL)
-- ✅ Local OpenAI-compatible services (Ollama, LM Studio)
-- ✅ Gemini API (fixed endpoint)
+- ✅ Local OpenAI-compatible services (Ollama, LM Studio, vLLM, etc.)
+- ✅ Other OpenAI-compatible services
 
 ### Configuration Examples
 
@@ -151,11 +155,11 @@ AI API Key: (can be empty)
 Model: llama3
 ```
 
-#### Using Google Gemini
+#### Using Local LM Studio
 ```
-OpenAI Base URL: (leave empty or any, doesn't affect Gemini)
-AI API Key: AIza...
-Model: gemini-2.5-flash-preview-09-2025
+OpenAI Base URL: http://localhost:1234/v1
+AI API Key: lm-studio (can be empty)
+Model: your-local-model-name
 ```
 
 ### V2EX API
@@ -171,16 +175,20 @@ To access settings:
 - Click the "⚙️ 设置" button
 - Or right-click the extension icon and select "Options"
 
-## Publish
+## Build Artifacts
 
-For Chrome only
+构建产物位于项目根目录的 `dist` 文件夹：
+- Chrome: `dist/chrome-mv3/`
+- Firefox: `dist/firefox-mv2/`
+- ZIP 包: `dist/*.zip`
 
-1. Bump verion in `package.json`
-2. Build and zip
+### GitHub Actions 自动构建
 
-    ```bash
-    bun run build
-    bun run zip
-    ````
+每次代码推送到 GitHub 后，GitHub Actions 会自动：
+1. 构建 Chrome 和 Firefox 扩展
+2. 打包成 ZIP 文件
+3. 上传构建产物作为 artifacts
 
-3. Go to the _Chrome Web Store Developer Dashbaord_ page of the extension. Select "Upload new package". Select the zip file named like `ext-x.x.x-chrome.zip` from the `.output` dir.
+你可以在 [Actions](https://github.com/mybot102/chaonima/actions) 页面下载构建好的扩展。
+
+> ⚠️ **注意**：本项目目前未在 Chrome Web Store 上架，需要从源码构建或从 GitHub Actions 下载构建产物。
