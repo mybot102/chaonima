@@ -87,31 +87,46 @@ npm run build
 
 The extension now supports runtime configuration through the Settings page. Users can configure:
 
-1. **Backend API URL** - Chaonima backend server address (defaults to env var `VITE_API_BASE_URL`)
-   - This is the Chaonima backend proxy server, NOT the OpenAI/Gemini API directly
-   - The backend handles AI requests, caching, and API key management
-2. **Backend API Key** - API key for backend authentication (defaults to env var `VITE_API_KEY`)
-3. **V2EX Personal Access Token** - Required for accessing V2EX API
+1. **V2EX Personal Access Token** - Required for accessing V2EX API
    - Get your token at: https://www.v2ex.com/settings/tokens
    - Used to fetch topic content and replies via V2EX API 2.0
-4. **Model** - AI model selection
+2. **AI API Key** - Required for AI summarization
+   - Gemini: https://aistudio.google.com/app/apikey
+   - OpenAI: https://platform.openai.com/api-keys
+   - Extension calls AI API directly (no backend proxy)
+3. **Model** - AI model selection
    - Select from common models: Gemini, GPT, Claude series
-   - Or input custom model name (backend will forward to appropriate AI service)
-5. **Thinking Mode** - Enable/disable thinking mode for supported models
+   - Or input custom model name
+   - Auto-detects API provider based on model name
+4. **Thinking Mode** - Enable/disable thinking mode (Gemini models only)
 
-### Architecture
+### Architecture (v2.0 - Backend-Free)
 
 ```
-Browser Extension → V2EX API (fetch content) → Chaonima Backend → AI Service (Gemini/OpenAI/Claude)
+Browser Extension → V2EX API (fetch content) → AI API (Gemini/OpenAI) directly
 ```
+
+**How it works:**
+1. Extension fetches topic and replies from V2EX API 2.0
+2. Extension directly calls Gemini or OpenAI API for summarization
+3. Results stream back to user
+
+**Benefits:**
+- ✅ No backend server needed
+- ✅ More private (data goes directly from user to AI)
+- ✅ Faster (one less hop)
+- ✅ Simpler (only need two tokens)
+
+**Auto Provider Detection:**
+- Gemini models → Calls Gemini API
+- GPT/O1 models → Calls OpenAI API  
+- Claude models → Calls OpenAI API (compatible format)
 
 The extension uses V2EX API 2.0 Beta to fetch topic content:
 - No page navigation required (better UX)
 - Automatically fetches all replies (pagination handled)
 - More stable and efficient than DOM scraping
 - Rate limit: 120 requests/hour
-
-The backend acts as a proxy and cache layer between the extension and AI services.
 
 To access settings:
 - Click the extension icon in your browser
