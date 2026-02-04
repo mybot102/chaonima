@@ -87,12 +87,22 @@ npm run build
 
 The extension now supports runtime configuration through the Settings page. Users can configure:
 
-1. **API URL** - Custom API endpoint URL (defaults to env var `VITE_API_BASE_URL`)
-2. **API Key** - API key for authentication (defaults to env var `VITE_API_KEY`)
+1. **Backend API URL** - Chaonima backend server address (defaults to env var `VITE_API_BASE_URL`)
+   - This is the Chaonima backend proxy server, NOT the OpenAI/Gemini API directly
+   - The backend handles AI requests, caching, and API key management
+2. **Backend API Key** - API key for backend authentication (defaults to env var `VITE_API_KEY`)
 3. **Model** - AI model selection
    - Select from common models: Gemini, GPT, Claude series
-   - Or input custom model name for any OpenAI-compatible API
+   - Or input custom model name (backend will forward to appropriate AI service)
 4. **Thinking Mode** - Enable/disable thinking mode for supported models
+
+### Architecture
+
+```
+Browser Extension → Chaonima Backend → AI Service (Gemini/OpenAI/Claude)
+```
+
+The backend acts as a proxy and cache layer between the extension and AI services.
 
 To access settings:
 - Click the extension icon in your browser

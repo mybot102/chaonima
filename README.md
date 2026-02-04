@@ -61,10 +61,24 @@ bun run build:firefox
 
 安装扩展后，点击扩展图标，然后点击"⚙️ 设置"按钮即可配置：
 
-- **API URL** - 自定义 API 端点 URL
-- **API Key** - API 密钥
+- **后端 API 地址** - Chaonima 后端服务器地址（默认使用公共服务器，高级用户可部署自己的后端）
+- **后端 API 密钥** - 后端服务器的访问密钥
 - **模型** - 选择常用 AI 模型（Gemini、GPT、Claude 系列）或输入自定义模型名称
 - **思考模式** - 启用后，模型会显示其思考过程
+
+### 架构说明
+
+Chaonima 使用三层架构：
+
+```
+浏览器扩展 → Chaonima 后端服务 → AI 服务（Gemini/OpenAI/Claude）
+```
+
+- **浏览器扩展**：收集 V2EX 内容并展示总结结果
+- **后端服务**：作为代理，处理 AI 请求、缓存结果、管理 API 密钥
+- **AI 服务**：实际的 AI 模型提供商（Gemini、OpenAI、Claude 等）
+
+> ⚠️ **注意**：配置中的"后端 API 地址"是指 Chaonima 后端服务器，不是 OpenAI 或 Gemini 的 API 地址。后端服务会代理请求到相应的 AI 服务。
 
 ## Development
 
