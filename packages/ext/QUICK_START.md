@@ -99,6 +99,7 @@ bun run dev
 
 ## 📝 需要帮助？
 
+- 查看 [故障排除指南](./TROUBLESHOOTING.md) - 详细的问题诊断和解决方案
 - 查看 [README.md](../../README.md) 获取更多信息
 - 查看 [packages/ext/README.md](./README.md) 获取开发文档
 - 提交 Issue 到 GitHub

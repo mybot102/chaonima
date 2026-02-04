@@ -62,6 +62,13 @@ bun run zip:firefox  # Firefox
 2. 在浏览器中加载 `packages/ext/.output/chrome-mv3` 目录，而不是 `packages/ext` 目录
 3. 检查 `.output` 目录是否存在且包含 `manifest.json` 文件
 
+运行构建检查脚本：
+```bash
+bun run check
+```
+
+**详细诊断步骤：** 查看 [故障排除指南](./TROUBLESHOOTING.md)
+
 ### 问题：依赖安装失败
 
 如果 `bun install` 失败，可以尝试使用 npm：
@@ -70,6 +77,11 @@ bun run zip:firefox  # Firefox
 npm install
 npm run build
 ```
+
+### 更多帮助
+
+- [快速开始指南](./QUICK_START.md) - 完整的安装和构建步骤
+- [故障排除指南](./TROUBLESHOOTING.md) - 详细的问题诊断
 
 ## Configuration
 
