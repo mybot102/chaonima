@@ -1,20 +1,82 @@
-name: 'ci'
+name: 'CI - Build and Package'
 
 on:
   push:
+    branches:
+      - main
+      - master
+      - '**'
+  pull_request:
+    branches:
+      - main
+      - master
 
 env:
   PROJECT_ID: 'my-project'
-  # '${{ env.PROJECT_ID }}'
 
 jobs:
-  ci:
-    name: 'Setup, Build and Test'
+  build:
+    name: 'Build Extension'
     runs-on: 'ubuntu-latest'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run -F ext build
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build Chrome extension
+        working-directory: packages/ext
+        run: bun run build
+
+      - name: Build Firefox extension
+        working-directory: packages/ext
+        run: bun run build:firefox
+
+      - name: Package Chrome extension
+        working-directory: packages/ext
+        run: bun run zip
+
+      - name: Package Firefox extension
+        working-directory: packages/ext
+        run: bun run zip:firefox
+
+      - name: Upload Chrome build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: |
+            dist/chrome-mv3/**
+          retention-days: 30
+
+      - name: Upload Firefox build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-extension
+          path: |
+            dist/firefox-mv2/**
+          retention-days: 30
+
+      - name: Upload Chrome ZIP package
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension-zip
+          path: |
+            dist/*.zip
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: List build outputs
+        run: |
+          echo "=== Build Output Structure ==="
+          find dist -type f -name "*.zip" -o -name "manifest.json" | head -20 || true
+          echo ""
+          echo "=== Chrome Extension Files ==="
+          ls -la dist/chrome-mv3/ || echo "Chrome build not found"
+          echo ""
+          echo "=== Firefox Extension Files ==="
+          ls -la dist/firefox-mv2/ || echo "Firefox build not found"
