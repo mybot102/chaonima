@@ -1,0 +1,143 @@
+name: 'Release'
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送以 v 开头的 tag 时触发，例如 v0.0.4
+
+jobs:
+  release:
+    name: 'Create Release'
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: write  # 需要写入权限来创建 release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史记录，用于生成 changelog
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build Chrome extension
+        working-directory: packages/ext
+        run: bun run build
+
+      - name: Build Firefox extension
+        working-directory: packages/ext
+        run: bun run build:firefox
+
+      - name: Package Chrome extension
+        working-directory: packages/ext
+        run: bun run zip
+
+      - name: Package Firefox extension
+        working-directory: packages/ext
+        run: bun run zip:firefox
+
+      - name: Get version from package.json
+        id: get_version
+        working-directory: packages/ext
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Extract tag name
+        id: tag
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG_NAME"
+
+      - name: Find ZIP files
+        id: find_zips
+        run: |
+          echo "Searching for ZIP files in dist directory..."
+          find dist -name "*.zip" -type f || echo "No ZIP files found yet"
+          
+          # WXT 生成的 ZIP 文件格式通常是: ext-{version}-{browser}.zip
+          # 例如: ext-0.0.4-chrome.zip, ext-0.0.4-firefox.zip
+          VERSION="${{ steps.get_version.outputs.version }}"
+          
+          # 查找 Chrome ZIP（格式: ext-{version}-chrome.zip）
+          CHROME_ZIP=$(find dist -name "ext-${VERSION}-chrome.zip" -type f | head -1)
+          # 如果精确匹配没找到，尝试模糊匹配
+          if [ -z "$CHROME_ZIP" ]; then
+            CHROME_ZIP=$(find dist -name "*chrome*.zip" -type f | grep -v firefox | head -1)
+          fi
+          
+          # 查找 Firefox ZIP（格式: ext-{version}-firefox.zip）
+          FIREFOX_ZIP=$(find dist -name "ext-${VERSION}-firefox.zip" -type f | head -1)
+          # 如果精确匹配没找到，尝试模糊匹配
+          if [ -z "$FIREFOX_ZIP" ]; then
+            FIREFOX_ZIP=$(find dist -name "*firefox*.zip" -type f | head -1)
+          fi
+          
+          if [ -n "$CHROME_ZIP" ]; then
+            echo "chrome_zip=$CHROME_ZIP" >> $GITHUB_OUTPUT
+            echo "✓ Found Chrome ZIP: $CHROME_ZIP"
+          else
+            echo "⚠ Chrome ZIP not found"
+            echo "Available ZIP files:"
+            find dist -name "*.zip" -type f || echo "None"
+          fi
+          
+          if [ -n "$FIREFOX_ZIP" ]; then
+            echo "firefox_zip=$FIREFOX_ZIP" >> $GITHUB_OUTPUT
+            echo "✓ Found Firefox ZIP: $FIREFOX_ZIP"
+          else
+            echo "⚠ Firefox ZIP not found"
+          fi
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          TAG_NAME="${{ steps.tag.outputs.tag }}"
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # 如果没有之前的 tag，获取所有提交
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            # 获取两个 tag 之间的提交
+            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          NOTES="## 版本 ${{ steps.get_version.outputs.version }}
+          
+          ### 变更内容
+          ${CHANGELOG}
+          
+          ### 下载
+          - Chrome 扩展：下载 \`chaonima-chrome-*.zip\`
+          - Firefox 扩展：下载 \`chaonima-firefox-*.zip\`
+          
+          ### 安装说明
+          1. 下载对应浏览器的 ZIP 文件
+          2. 解压 ZIP 文件
+          3. 在浏览器中加载解压后的扩展目录
+            - Chrome/Edge: \`chrome://extensions/\` → 开发者模式 → 加载已解压的扩展程序
+            - Firefox: \`about:debugging#/runtime/this-firefox\` → 临时载入附加组件"
+          
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: 版本 ${{ steps.get_version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: false
+          files: |
+            ${{ steps.find_zips.outputs.chrome_zip }}
+            ${{ steps.find_zips.outputs.firefox_zip }}
+        continue-on-error: false

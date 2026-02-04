@@ -195,6 +195,29 @@ bun run -F preview dev
 - Firefox: `dist/firefox-mv2/`
 - ZIP 包: `dist/*.zip`
 
+### 自动发布 Release
+
+当推送以 `v` 开头的 tag 时（例如 `v0.0.4`），GitHub Actions 会自动：
+1. 构建 Chrome 和 Firefox 扩展
+2. 打包成 ZIP 文件
+3. 创建 GitHub Release
+4. 上传 ZIP 文件到 Release
+
+**发布步骤：**
+```bash
+# 1. 更新版本号（在 packages/ext/package.json 中）
+# 2. 提交更改
+git add packages/ext/package.json
+git commit -m "更新版本号到 0.0.5"
+
+# 3. 创建并推送 tag
+git tag v0.0.5
+git push origin main
+git push origin v0.0.5
+```
+
+发布后，可以在 [Releases](https://github.com/mybot102/chaonima/releases) 页面下载构建好的扩展。
+
 ### 📚 详细文档
 
 - [扩展快速开始指南](./packages/ext/QUICK_START.md) - 如何构建和安装扩展
