@@ -8,6 +8,7 @@
 
 - 🤖 使用 AI 智能总结 V2EX 帖子和评论
 - ⚙️ 支持自定义 API 配置（URL、密钥、模型）
+- 🎯 支持多种 AI 模型（Gemini、GPT、Claude）及自定义模型
 - 🧠 支持启用/禁用思考模式
 - 💾 本地存储配置，无需重新构建扩展
 - 🎨 美观的设置界面
@@ -62,7 +63,7 @@ bun run build:firefox
 
 - **API URL** - 自定义 API 端点 URL
 - **API Key** - API 密钥
-- **模型** - 选择要使用的 AI 模型（支持 Gemini 和 GPT 系列）
+- **模型** - 选择常用 AI 模型（Gemini、GPT、Claude 系列）或输入自定义模型名称
 - **思考模式** - 启用后，模型会显示其思考过程
 
 ## Development
