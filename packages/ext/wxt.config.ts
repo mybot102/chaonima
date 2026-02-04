@@ -13,7 +13,7 @@ export default defineConfig({
   manifest: {
     name: 'chaonima 吵泥马',
     description: '这个插件可以总结 v2ex 帖子和网友评论',
-    // permissions: ['activeTab'],
+    permissions: ['storage'],
     icons: {
       16: '/icon/chaonima-main-16.png',
       32: '/icon/chaonima-main-32.png',

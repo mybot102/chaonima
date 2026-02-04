@@ -16,6 +16,7 @@ import {
   MESSAGE_REMOTE_TEXT,
   MessageRemoteText,
 } from '@/utils/message';
+import { getConfig } from '@/utils/storage.utils';
 import { fetchTextStream } from 'preview/plain';
 import * as z from 'zod';
 
@@ -214,6 +215,7 @@ async function getPostId(url: string) {
 
 async function getChaonima(text: string, id: string, tab: Tab) {
   const port = browser.tabs.connect(tab.id!);
+  const config = await getConfig();
 
   let ret = '';
   let firstChunk = true;
@@ -227,15 +229,23 @@ async function getChaonima(text: string, id: string, tab: Tab) {
     firstChunk = false;
   }
 
-  const url = `${import.meta.env.VITE_API_BASE_URL}/api/v2ex/streamGenerateContent`;
+  const apiBaseUrl = config.apiUrl || import.meta.env.VITE_API_BASE_URL;
+  const apiKey = config.apiKey || import.meta.env.VITE_API_KEY;
+  const url = `${apiBaseUrl}/api/v2ex/streamGenerateContent`;
+  
   try {
     await fetchTextStream(url, {
       method: 'POST',
-      body: JSON.stringify({ text, id }),
+      body: JSON.stringify({ 
+        text, 
+        id,
+        model: config.model,
+        enableThinking: config.enableThinking
+      }),
       onmessage,
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': import.meta.env.VITE_API_KEY,
+        'x-api-key': apiKey,
       },
     });
     PostByUrl.delete(id);
@@ -275,8 +285,11 @@ function deletePost10MinLater(id: string) {
 }
 
 async function fetchSummary(id: string) {
-  const url = `${import.meta.env.VITE_API_BASE_URL}/api/v2ex/summaries?${new URLSearchParams({ id })}`;
-  const res = await fetch(url, { headers: { 'x-api-key': import.meta.env.VITE_API_KEY } });
+  const config = await getConfig();
+  const apiBaseUrl = config.apiUrl || import.meta.env.VITE_API_BASE_URL;
+  const apiKey = config.apiKey || import.meta.env.VITE_API_KEY;
+  const url = `${apiBaseUrl}/api/v2ex/summaries?${new URLSearchParams({ id })}`;
+  const res = await fetch(url, { headers: { 'x-api-key': apiKey } });
   if (!res.ok) return;
   return await res.text();
 }
