@@ -100,7 +100,7 @@ function App() {
             <ChaonimaLogo />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Chaonima 设置</h1>
-          <p className="mt-2 text-gray-600">配置 API 以接入 OpenAI 兼容的模型</p>
+          <p className="mt-2 text-gray-600">配置后端服务和 AI 模型偏好</p>
         </div>
 
         <div className="bg-white shadow rounded-lg p-6">
@@ -108,36 +108,39 @@ function App() {
             {/* API URL */}
             <div>
               <label htmlFor="apiUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                API URL
+                后端 API 地址
               </label>
               <input
                 type="url"
                 id="apiUrl"
                 value={config.apiUrl}
                 onChange={(e) => setConfig({ ...config, apiUrl: e.target.value })}
-                placeholder="https://api.example.com"
+                placeholder="https://your-backend-server.com"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="mt-1 text-sm text-gray-500">
-                OpenAI 兼容 API 的基础 URL（留空使用默认值）
+                Chaonima 后端服务的地址（留空使用默认服务器）
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                ⚠️ 注意：这不是 OpenAI/Gemini API 地址，而是 Chaonima 后端代理服务器地址
               </p>
             </div>
 
             {/* API Key */}
             <div>
               <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-2">
-                API Key
+                后端 API 密钥
               </label>
               <input
                 type="password"
                 id="apiKey"
                 value={config.apiKey}
                 onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                placeholder="sk-..."
+                placeholder="your-backend-api-key"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="mt-1 text-sm text-gray-500">
-                您的 API 密钥（留空使用默认值）
+                Chaonima 后端服务的访问密钥（留空使用默认服务器）
               </p>
             </div>
 
@@ -222,8 +225,20 @@ function App() {
         </div>
 
         <div className="mt-8 text-center">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-blue-800 font-medium mb-2">
+              ℹ️ 关于架构说明
+            </p>
+            <p className="text-xs text-blue-700 text-left">
+              Chaonima 使用三层架构：<br/>
+              <span className="font-mono">浏览器扩展 → 后端代理服务 → AI 服务（Gemini/OpenAI/Claude）</span><br/><br/>
+              • <strong>后端 API 地址</strong>：Chaonima 后端服务器，用于代理和缓存 AI 请求<br/>
+              • <strong>模型选择</strong>：后端服务器会将您的选择转发给对应的 AI 服务<br/>
+              • 默认情况下使用公共后端服务器，您也可以部署自己的后端服务
+            </p>
+          </div>
           <p className="text-sm text-gray-500">
-            使用 Chaonima 扩展时，将使用这些配置来连接 AI 服务
+            需要帮助？查看 <a href="https://github.com/haishanh/chaonima" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">项目文档</a>
           </p>
           <div className="mt-4">
             <a
