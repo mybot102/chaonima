@@ -91,16 +91,25 @@ The extension now supports runtime configuration through the Settings page. User
    - This is the Chaonima backend proxy server, NOT the OpenAI/Gemini API directly
    - The backend handles AI requests, caching, and API key management
 2. **Backend API Key** - API key for backend authentication (defaults to env var `VITE_API_KEY`)
-3. **Model** - AI model selection
+3. **V2EX Personal Access Token** - Required for accessing V2EX API
+   - Get your token at: https://www.v2ex.com/settings/tokens
+   - Used to fetch topic content and replies via V2EX API 2.0
+4. **Model** - AI model selection
    - Select from common models: Gemini, GPT, Claude series
    - Or input custom model name (backend will forward to appropriate AI service)
-4. **Thinking Mode** - Enable/disable thinking mode for supported models
+5. **Thinking Mode** - Enable/disable thinking mode for supported models
 
 ### Architecture
 
 ```
-Browser Extension → Chaonima Backend → AI Service (Gemini/OpenAI/Claude)
+Browser Extension → V2EX API (fetch content) → Chaonima Backend → AI Service (Gemini/OpenAI/Claude)
 ```
+
+The extension uses V2EX API 2.0 Beta to fetch topic content:
+- No page navigation required (better UX)
+- Automatically fetches all replies (pagination handled)
+- More stable and efficient than DOM scraping
+- Rate limit: 120 requests/hour
 
 The backend acts as a proxy and cache layer between the extension and AI services.
 

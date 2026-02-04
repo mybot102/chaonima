@@ -63,6 +63,7 @@ bun run build:firefox
 
 - **后端 API 地址** - Chaonima 后端服务器地址（默认使用公共服务器，高级用户可部署自己的后端）
 - **后端 API 密钥** - 后端服务器的访问密钥
+- **V2EX Personal Access Token** - 用于访问 V2EX API 获取帖子内容（[获取 Token](https://www.v2ex.com/settings/tokens)）
 - **模型** - 选择常用 AI 模型（Gemini、GPT、Claude 系列）或输入自定义模型名称
 - **思考模式** - 启用后，模型会显示其思考过程
 
@@ -71,14 +72,26 @@ bun run build:firefox
 Chaonima 使用三层架构：
 
 ```
-浏览器扩展 → Chaonima 后端服务 → AI 服务（Gemini/OpenAI/Claude）
+浏览器扩展 → V2EX API（获取内容） → Chaonima 后端服务 → AI 服务（Gemini/OpenAI/Claude）
 ```
 
-- **浏览器扩展**：收集 V2EX 内容并展示总结结果
+- **浏览器扩展**：通过 V2EX API 获取帖子内容，展示总结结果
+- **V2EX API**：官方 API 2.0，提供帖子和回复数据
 - **后端服务**：作为代理，处理 AI 请求、缓存结果、管理 API 密钥
 - **AI 服务**：实际的 AI 模型提供商（Gemini、OpenAI、Claude 等）
 
-> ⚠️ **注意**：配置中的"后端 API 地址"是指 Chaonima 后端服务器，不是 OpenAI 或 Gemini 的 API 地址。后端服务会代理请求到相应的 AI 服务。
+> ⚠️ **注意**：
+> - 需要配置 V2EX Token 才能使用（访问 [V2EX 设置](https://www.v2ex.com/settings/tokens) 创建）
+> - "后端 API 地址"是指 Chaonima 后端服务器，不是 OpenAI 或 Gemini 的 API 地址
+
+### V2EX API 使用
+
+扩展使用 V2EX API 2.0 Beta 获取帖子内容：
+- 无需页面跳转，用户体验更好
+- 自动获取所有回复（支持分页）
+- 更稳定、更高效
+
+API Rate Limit：120 次/小时（CDN 缓存的请求不消耗配额）
 
 ## Development
 
