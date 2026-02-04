@@ -17,6 +17,7 @@ import {
   MessageRemoteText,
 } from '@/utils/message';
 import { getConfig } from '@/utils/storage.utils';
+import { extractTopicId, getTopic, getAllTopicReplies, formatTopicForAI } from '@/utils/v2ex-api.utils';
 import { fetchTextStream } from 'preview/plain';
 import * as z from 'zod';
 
@@ -47,11 +48,13 @@ const handler = {
     if (!tab || !tab.url || !tab.id) {
       throw new Error(`Invalid tab url=${tab?.url} id=${tab?.id}`);
     }
-    const id = await getPostId(tab.url);
-    if (!id) {
-      throw new Error('Can not get post id');
+    
+    const topicId = extractTopicId(tab.url);
+    if (!topicId) {
+      throw new Error('Can not extract topic id from URL');
     }
-
+    
+    const id = await getPostId(tab.url);
     const info = PostByUrl.get(id);
 
     if (msg.payload.checkState && !info) {
@@ -72,6 +75,7 @@ const handler = {
     browser.tabs.sendMessage(tab.id, {
       type: MESSAGE_CHECKING_REMOTE_SAVED,
     } satisfies z.infer<typeof MessageCheckingRemoteSaved>);
+    
     const text = await fetchSummary(id);
     if (text) {
       browser.tabs.sendMessage(tab.id, {
@@ -81,101 +85,43 @@ const handler = {
       return;
     }
 
-    if (!info && !msg.payload.checkState) {
+    // 使用 V2EX API 获取数据
+    if (!msg.payload.checkState) {
       PostByUrl.set(id, { time: Date.now(), url: id });
       deletePost10MinLater(id);
-      browser.tabs.sendMessage(tab.id, {
-        type: MESSAGE_RETRIEVE_POST_INFO,
-        payload: { url: id },
-      } satisfies z.infer<typeof MessageRetrievePostInfo>);
-    } else if (info) {
-      if (info.title) {
+      
+      try {
+        const config = await getConfig();
+        const token = config.v2exToken;
+        
+        // 获取主题详情
+        const topic = await getTopic(topicId, token);
+        
+        // 获取所有回复
+        const replies = await getAllTopicReplies(topicId, token);
+        
+        // 格式化为文本
+        const formattedText = formatTopicForAI(topic, replies);
+        
+        // 发送给 AI 总结
+        getChaonima(formattedText, id, tab);
+      } catch (error) {
+        logger.error('Failed to fetch topic from V2EX API:', error);
+        // 发送错误消息到 content script
         browser.tabs.sendMessage(tab.id, {
-          type: MESSAGE_RETRIEVE_COMMENTS,
-          payload: { url: id },
-        } satisfies z.infer<typeof MessageRetrieveComments>);
-      } else {
-        browser.tabs.sendMessage(tab.id, {
-          type: MESSAGE_RETRIEVE_POST_INFO,
-          payload: { url: id },
-        } satisfies z.infer<typeof MessageRetrievePostInfo>);
+          type: MESSAGE_REMOTE_TEXT,
+          payload: { text: `获取 V2EX 数据失败: ${error.message}\n\n请检查：\n1. 是否已在设置中配置 V2EX Token\n2. Token 是否有效\n3. 网络连接是否正常` },
+        } satisfies z.infer<typeof MessageRemoteText>);
       }
     }
   },
 
+  // MESSAGE_UPDATE_INFO 不再需要，因为我们通过 API 直接获取所有数据
   [MESSAGE_UPDATE_INFO]: async (m: unknown, sender: Sender) => {
-    const msg = MessageUpdateInfo.parse(m);
-    const payload = msg.payload;
-    const url = payload?.url;
-    if (!url) throw new Error('Expect url in message payload');
-
-    const info = updatePost(url, payload);
-
-    const tab = await getCurrentTab(sender);
-    if (!tab || !tab.id) {
-      throw new Error('handle update_info: tab is not available');
-    }
-
-    // dont proceed if we dont have enough info
-    if (!info.title) return;
-
-    if (!loadNextPage(url, tab.id)) {
-      const text = generateText(info);
-      if (text) getChaonima(text, url, tab);
-    }
+    // 保留以兼容旧消息，但不执行任何操作
+    logger.info('MESSAGE_UPDATE_INFO received but ignored (using V2EX API now)');
   },
 };
-
-function loadNextPage(id: string, tabId: number) {
-  const info = PostByUrl.get(id);
-  if (!info) {
-    throw new Error(`info not found for ${id}`);
-  }
-  const totalPages = info.totalPages;
-  const commentsByPage = info.commentsByPage;
-  if (typeof totalPages !== 'number' || !commentsByPage) {
-    throw new Error(`invalid totalPages or missing commentsByPage for ${id}`);
-  }
-
-  for (let i = 1; i <= totalPages; i++) {
-    if (!commentsByPage[i]) {
-      const url = info.url + '?p=' + i;
-      browser.tabs.update(tabId, { url });
-      return true;
-    }
-  }
-  return false;
-}
-
-function generateText(info: Partial<PostInfo>) {
-  if (!info.commentsByPage) {
-    logger.error('Not able to generateText - commentsByPage is undefined');
-    return;
-  }
-
-  const comments: string[] = [];
-  for (const key of Object.keys(info.commentsByPage)) {
-    for (const { user, reply } of info.commentsByPage[key]) {
-      comments.push(`${user} 说:\n---\n${reply}\n---\n`);
-    }
-  }
-  const parts = [`帖子标题:\n${info.title}`];
-  if (info.author) {
-    parts.push(`作者:\n${info.author}`);
-  }
-  if (info.body) {
-    parts.push(`帖子内容:\n${info.body}`);
-  } else {
-    // it's allowed to not have post content
-    parts.push(`帖子内容:\n${info.title}`);
-  }
-  if (comments.length > 0) {
-    parts.push(`下面都是大家的评论:\n${comments.join('\n')}`);
-  } else {
-    parts.push(`该文章目前还没有评论`);
-  }
-  return parts.join('\n\n');
-}
 
 function armListeners() {
   browser.runtime.onMessage.addListener((msg, sender, _reply) => {
@@ -252,30 +198,6 @@ async function getChaonima(text: string, id: string, tab: Tab) {
   } catch (e) {
     port.disconnect();
   }
-}
-
-function updatePost(id: string, payload: z.infer<typeof MessageUpdateInfo>['payload']) {
-  let info = PostByUrl.get(id);
-  if (!info) {
-    throw new Error(`Expect post ${id} info is already in store`);
-  }
-
-  if ('title' in payload && payload.title) {
-    info.title = payload.title;
-    info.body = payload.body;
-    info.author = payload.author;
-    info.totalPages = payload.totalPages;
-  }
-
-  info.commentsByPage = {
-    ...info.commentsByPage,
-    [payload.currentPage]: payload.comments,
-  };
-  info.time = Date.now();
-
-  deletePost10MinLater(id);
-
-  return info;
 }
 
 function deletePost10MinLater(id: string) {

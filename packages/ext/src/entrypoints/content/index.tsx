@@ -79,15 +79,10 @@ async function handleRetrieveComments(msg: { payload: { url: string } }) {
 function armListeners() {
   browser.runtime.onMessage.addListener((m, sender, reply) => {
     switch (m.type) {
-      case MESSAGE_RETRIEVE_POST_INFO: {
-        const msg = MessageRetrievePostInfo.parse(m);
-        handleRetrievePostInfo(msg);
-        return false;
-      }
-
+      case MESSAGE_RETRIEVE_POST_INFO:
       case MESSAGE_RETRIEVE_COMMENTS: {
-        const msg = MessageRetrieveComments.parse(m);
-        handleRetrieveComments(msg);
+        // These messages are no longer used with V2EX API
+        // Kept for backwards compatibility but do nothing
         return false;
       }
 
@@ -136,6 +131,9 @@ function armListeners() {
     });
   });
 }
+
+// The following DOM scraping functions are no longer used with V2EX API
+// Kept for reference but not called anymore
 
 function getPageInfo() {
   const ps = document.querySelector('#Main .ps_container');

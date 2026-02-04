@@ -7,6 +7,7 @@ export const ConfigSchema = z.object({
   apiKey: z.string().optional(),
   model: z.string().optional(),
   enableThinking: z.boolean().optional(),
+  v2exToken: z.string().optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -17,6 +18,7 @@ export const DEFAULT_CONFIG: Config = {
   apiKey: import.meta.env.VITE_API_KEY || '',
   model: 'gemini-2.5-flash-preview-09-2025',
   enableThinking: false,
+  v2exToken: '',
 };
 
 const STORAGE_KEY = 'chaonima_config';

@@ -21,6 +21,7 @@ function App() {
     apiKey: '',
     model: 'gemini-2.5-flash-preview-09-2025',
     enableThinking: false,
+    v2exToken: '',
   });
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -184,6 +185,36 @@ function App() {
               
               <p className="mt-1 text-sm text-gray-500">
                 选择常用模型或输入自定义模型名称
+              </p>
+            </div>
+
+            {/* V2EX Token */}
+            <div>
+              <label htmlFor="v2exToken" className="block text-sm font-medium text-gray-700 mb-2">
+                V2EX Personal Access Token
+              </label>
+              <input
+                type="password"
+                id="v2exToken"
+                value={config.v2exToken}
+                onChange={(e) => setConfig({ ...config, v2exToken: e.target.value })}
+                placeholder="bd1f2c67-cc7f-48e3-a48a-e5b88b427146"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                用于访问 V2EX API 获取帖子内容和回复
+              </p>
+              <p className="mt-1 text-xs text-blue-600">
+                💡 如何获取 Token：访问{' '}
+                <a 
+                  href="https://www.v2ex.com/settings/tokens" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-800"
+                >
+                  V2EX 设置 - Tokens
+                </a>
+                {' '}创建新的 Personal Access Token
               </p>
             </div>
 
