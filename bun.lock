@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "chaonima-priv",
@@ -11,7 +12,7 @@
     },
     "packages/ext": {
       "name": "ext",
-      "version": "0.0.3",
+      "version": "0.0.4",
       "dependencies": {
         "@phosphor-icons/react": "^2.1.10",
         "@preact/signals-react": "^3.3.0",

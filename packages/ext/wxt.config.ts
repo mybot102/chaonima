@@ -5,6 +5,7 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   imports: false,
   srcDir: 'src',
+  outDir: '../../dist',
   modules: ['@wxt-dev/module-react', '@wxt-dev/webextension-polyfill'],
   // @ts-ignore
   vite: () => ({

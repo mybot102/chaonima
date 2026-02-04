@@ -141,7 +141,7 @@ export async function callOpenAIStream(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `******,
+      'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify(requestBody),
   });
