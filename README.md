@@ -14,7 +14,47 @@
 
 ## Install
 
+### 方式一：从 Chrome Web Store 安装（推荐）
+
  <a href="https://chromewebstore.google.com/detail/chaonima-%E5%90%B5%E6%B3%A5%E9%A9%AC/hpjdgebpmeghdajniclmlfkbablmmnhc">Chrome Web Store</a>
+
+### 方式二：从源码构建安装
+
+如果你想从源码安装或进行开发，请按照以下步骤操作：
+
+#### 1. 克隆仓库并安装依赖
+
+```bash
+git clone https://github.com/mybot102/chaonima.git
+cd chaonima
+bun install  # 或使用 npm install
+```
+
+#### 2. 构建扩展
+
+```bash
+cd packages/ext
+bun run build  # 或使用 npm run build
+```
+
+构建完成后，扩展文件会生成在 `packages/ext/.output/chrome-mv3` 目录中。
+
+#### 3. 在浏览器中加载扩展
+
+**Chrome/Edge:**
+1. 打开浏览器，访问 `chrome://extensions/`
+2. 开启右上角的"开发者模式"
+3. 点击"加载已解压的扩展程序"
+4. 选择 `packages/ext/.output/chrome-mv3` 目录
+
+**Firefox:**
+```bash
+# 使用 Firefox 构建
+bun run build:firefox
+```
+然后访问 `about:debugging#/runtime/this-firefox`，点击"临时载入附加组件"，选择 `packages/ext/.output/firefox-mv2/manifest.json`。
+
+> ⚠️ **重要提示**：不要尝试直接加载 `packages/ext` 源码目录，这会导致"清单文件缺失"错误。必须先构建，然后加载 `.output` 目录中的构建产物。
 
 ## Configuration
 
@@ -37,6 +77,29 @@ Some quick commands to get started:
 # install deps
 bun install
 
+# develop the extension
 bun run -F ext dev
+
+# build the extension for production
+bun run -F ext build
+
+# develop the preview app
 bun run -F preview dev
 ```
+
+### 📚 详细文档
+
+- [扩展快速开始指南](./packages/ext/QUICK_START.md) - 如何构建和安装扩展
+- [扩展开发文档](./packages/ext/README.md) - 开发和构建说明
+- [API 文档](./packages/api/README.md) - 后端 API 文档
+
+### ⚠️ 常见问题
+
+**问：为什么浏览器提示"清单文件缺失"？**
+
+答：你可能尝试直接加载源码目录。正确做法是：
+1. 先运行 `bun run -F ext build` 构建扩展
+2. 在浏览器中加载 `packages/ext/.output/chrome-mv3` 目录
+
+详见 [快速开始指南](./packages/ext/QUICK_START.md)。
+
