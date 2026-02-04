@@ -67,3 +67,23 @@ export const MessageRemoteText = z.object({
     text: z.string(),
   }),
 });
+
+export const MESSAGE_FETCH_PROGRESS = 'MESSAGE_FETCH_PROGRESS';
+
+export const MessageFetchProgress = z.object({
+  type: z.literal(MESSAGE_FETCH_PROGRESS),
+  payload: z.object({
+    current: z.number(),
+    total: z.number(),
+    message: z.string().optional(),
+  }),
+});
+
+export const MESSAGE_THINKING_CHUNK = 'MESSAGE_THINKING_CHUNK';
+
+export const MessageThinkingChunk = z.object({
+  type: z.literal(MESSAGE_THINKING_CHUNK),
+  payload: z.object({
+    text: z.string(),
+  }),
+});

@@ -2,11 +2,8 @@ import { useState, useEffect } from 'react';
 import { getConfig, saveConfig, resetConfig, type Config } from '@/utils/storage.utils';
 import { ChaonimaLogo } from 'preview/react';
 
-// 预定义的常用模型
+// 预定义的常用模型（所有模型都使用 OpenAI 兼容 API）
 const COMMON_MODELS = [
-  { value: 'gemini-2.5-flash-preview-09-2025', label: 'Gemini 2.5 Flash Preview' },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
-  { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash Experimental' },
   { value: 'gpt-4o', label: 'GPT-4o' },
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
@@ -19,7 +16,7 @@ function App() {
   const [config, setConfig] = useState<Config>({
     apiUrl: '',
     apiKey: '',
-    model: 'gemini-2.5-flash-preview-09-2025',
+    model: 'gpt-4o-mini',
     enableThinking: false,
     v2exToken: '',
   });
@@ -137,31 +134,23 @@ function App() {
                 id="apiKey"
                 value={config.apiKey}
                 onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                placeholder="Gemini: AIza... 或 OpenAI: sk-..."
+                placeholder="OpenAI: sk-..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="mt-1 text-sm text-gray-500">
-                您的 AI 服务 API 密钥（Gemini 或 OpenAI）
+                您的 AI 服务 API 密钥（OpenAI 或兼容 OpenAI API 的服务）
               </p>
               <p className="mt-1 text-xs text-blue-600">
                 💡 获取 API Key：
                 <a 
-                  href="https://aistudio.google.com/app/apikey" 
+                  href="https://platform.openai.com/api-keys" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="underline hover:text-blue-800 ml-1"
                 >
-                  Gemini
-                </a>
-                {' '}或{' '}
-                <a 
-                  href="https://platform.openai.com/api-keys" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="underline hover:text-blue-800"
-                >
                   OpenAI
                 </a>
+                {' '}或使用兼容 OpenAI API 的服务（Azure OpenAI、本地服务等）
               </p>
             </div>
 
@@ -253,7 +242,7 @@ function App() {
                 </label>
               </div>
               <p className="mt-1 text-sm text-gray-500 ml-6">
-                启用后，模型会显示其思考过程（仅支持部分模型）
+                启用后，模型会显示其思考过程（需要模型支持）
               </p>
             </div>
 
@@ -282,11 +271,11 @@ function App() {
             </p>
             <p className="text-xs text-blue-700 text-left">
               Chaonima 使用直连架构，无需独立后端服务器：<br/>
-              <span className="font-mono">浏览器扩展 → V2EX API（获取内容）→ AI API（Gemini/OpenAI）</span><br/><br/>
+              <span className="font-mono">浏览器扩展 → V2EX API（获取内容）→ OpenAI 兼容 API</span><br/><br/>
               • <strong>V2EX Token</strong>：用于从 V2EX 获取帖子和回复数据<br/>
               • <strong>OpenAI 基础地址</strong>：自定义 AI API 端点（可选，支持 Azure OpenAI、本地服务等）<br/>
-              • <strong>AI API Key</strong>：用于调用 Gemini 或 OpenAI<br/>
-              • <strong>模型选择</strong>：根据模型名称自动识别使用 Gemini 还是 OpenAI API<br/>
+              • <strong>AI API Key</strong>：用于调用 OpenAI 或兼容 OpenAI API 的服务<br/>
+              • <strong>模型选择</strong>：所有模型都使用 OpenAI 兼容 API 格式<br/>
               • V2EX API 固定使用官方地址：https://www.v2ex.com/api/v2/
             </p>
           </div>

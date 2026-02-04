@@ -15,6 +15,10 @@ import {
   MessageCheckingRemoteSaved,
   MESSAGE_REMOTE_TEXT,
   MessageRemoteText,
+  MESSAGE_FETCH_PROGRESS,
+  MessageFetchProgress,
+  MESSAGE_THINKING_CHUNK,
+  MessageThinkingChunk,
 } from '@/utils/message';
 import { getConfig } from '@/utils/storage.utils';
 import { extractTopicId, getTopic, getAllTopicReplies, formatTopicForAI } from '@/utils/v2ex-api.utils';
@@ -84,8 +88,21 @@ const handler = {
         // 获取主题详情
         const topic = await getTopic(topicId, token);
         
-        // 获取所有回复
-        const replies = await getAllTopicReplies(topicId, token);
+        // 获取所有回复，显示进度
+        const replies = await getAllTopicReplies(topicId, token, (current, total) => {
+          // 发送进度消息到 content script
+          browser.tabs.sendMessage(tab.id!, {
+            type: MESSAGE_FETCH_PROGRESS,
+            payload: {
+              current,
+              total,
+              message: `正在获取评论... (${current}/${total})`,
+            },
+          } satisfies z.infer<typeof MessageFetchProgress>).catch(err => {
+            // 忽略发送失败的错误（可能 content script 还未准备好）
+            logger.warn('Failed to send progress message:', err);
+          });
+        });
         
         // 格式化为文本
         const formattedText = formatTopicForAI(topic, replies);
@@ -160,25 +177,65 @@ async function getChaonima(text: string, id: string, tab: Tab) {
     firstChunk = false;
   }
 
+  function onThinking(thinkingText: string) {
+    const msg = {
+      type: MESSAGE_THINKING_CHUNK,
+      payload: { text: thinkingText },
+    } satisfies z.infer<typeof MessageThinkingChunk>;
+    port.postMessage(msg);
+  }
+
   const apiKey = config.apiKey || import.meta.env.VITE_API_KEY;
   const apiUrl = config.apiUrl; // OpenAI base URL
-  const model = config.model || 'gemini-2.5-flash-preview-09-2025';
+  const model = config.model || 'gpt-4o-mini';
   const enableThinking = config.enableThinking || false;
   
   if (!apiKey) {
-    const errorMsg = '请在设置中配置 AI API Key (Gemini 或 OpenAI)';
+    const errorMsg = '请在设置中配置 AI API Key';
     onChunk(errorMsg);
     port.disconnect();
     return;
   }
   
   try {
-    // 直接调用 AI API（Gemini 或 OpenAI），支持自定义 base URL
-    await callAIStream(apiKey, text, model, enableThinking, onChunk, apiUrl);
+    // 直接调用 OpenAI 兼容 API，支持自定义 base URL
+    logger.info('开始调用 AI API', {
+      model,
+      baseUrl: apiUrl || '默认',
+      apiKey: apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : '未设置',
+      enableThinking,
+    });
+    await callAIStream(apiKey, text, model, enableThinking, onChunk, enableThinking ? onThinking : undefined, apiUrl);
     PostByUrl.delete(id);
   } catch (e) {
-    logger.error('AI API call failed:', e);
-    const errorMsg = `AI 调用失败: ${e.message}\n\n请检查：\n1. API Key 是否正确\n2. 模型名称是否正确\n3. API 地址是否正确\n4. 网络连接是否正常`;
+    const error = e instanceof Error ? e : new Error(String(e));
+    const maskedKey = apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : '未设置';
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      model,
+      baseUrl: apiUrl || '默认',
+      apiKey: maskedKey,
+      enableThinking,
+    };
+    logger.error('AI API call failed:', errorDetails);
+    
+    // 构建详细的错误信息
+    let errorMsg = `AI 调用失败: ${error.message}\n\n`;
+    errorMsg += `详细信息：\n`;
+    errorMsg += `- 模型名称: ${model}\n`;
+    errorMsg += `- API 地址: ${apiUrl || '默认（api.openai.com/v1）'}\n`;
+    errorMsg += `- API Key: ${maskedKey}\n`;
+    errorMsg += `- 思考模式: ${enableThinking ? '启用' : '禁用'}\n\n`;
+    errorMsg += `请检查：\n`;
+    errorMsg += `1. API Key 是否正确（当前: ${maskedKey}）\n`;
+    errorMsg += `2. 模型名称是否正确（当前: ${model}）\n`;
+    errorMsg += `3. API 地址是否正确（当前: ${apiUrl || '默认'}）\n`;
+    errorMsg += `4. 网络连接是否正常\n`;
+    if (error.stack) {
+      errorMsg += `\n技术详情（开发者模式）：\n${error.stack}`;
+    }
+    
     onChunk(errorMsg);
     port.disconnect();
   }

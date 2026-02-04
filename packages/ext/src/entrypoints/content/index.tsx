@@ -1,6 +1,6 @@
 import { browser, defineContentScript } from '#imports';
 import { ContentUi } from './ContentUi';
-import { setLoading } from './Start';
+import { setLoading, setProgress } from './Start';
 import { setGlobalContext, StartUi } from './StartUi';
 import {
   MESSAGE_LLM_TEXT_CHUNK,
@@ -16,8 +16,12 @@ import {
   MESSAGE_CHECKING_REMOTE_SAVED,
   MESSAGE_REMOTE_TEXT,
   MessageRemoteText,
+  MESSAGE_FETCH_PROGRESS,
+  MessageFetchProgress,
+  MESSAGE_THINKING_CHUNK,
+  MessageThinkingChunk,
 } from '@/utils/message';
-import { appendText } from 'preview/react';
+import { appendText, appendThinking, clearAll } from 'preview/react';
 import * as z from 'zod';
 
 export default defineContentScript({
@@ -95,9 +99,20 @@ function armListeners() {
         ContentUi.mount();
         StartUi.unmount();
         setLoading(false);
+        setProgress(null);
         const message = MessageRemoteText.parse(m);
         const text = message.payload.text;
         appendText(text);
+        return false;
+      }
+
+      case MESSAGE_FETCH_PROGRESS: {
+        const message = MessageFetchProgress.parse(m);
+        setProgress({
+          current: message.payload.current,
+          total: message.payload.total,
+          message: message.payload.message,
+        });
         return false;
       }
 
@@ -118,10 +133,20 @@ function armListeners() {
           if (message.payload.firstChunk) {
             StartUi.unmount();
             setLoading(false);
+            setProgress(null);
+            clearAll(); // 清除之前的内容和思考内容
           }
 
           const text = message.payload.text;
           appendText(text);
+          return false;
+        }
+        case MESSAGE_THINKING_CHUNK: {
+          ContentUi.mount();
+
+          const message = MessageThinkingChunk.parse(m);
+          const thinkingText = message.payload.text;
+          appendThinking(thinkingText);
           return false;
         }
         default: {

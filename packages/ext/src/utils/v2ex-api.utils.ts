@@ -45,11 +45,14 @@ export interface V2exReply {
 }
 
 export interface V2exRepliesResponse {
+  success: boolean;
+  message: string;
   result: V2exReply[];
-  page: number;
-  page_size: number;
-  total: number;
-  total_pages: number;
+  pagination: {
+    per_page: number;
+    total: number;
+    pages: number;
+  };
 }
 
 /**
@@ -112,14 +115,25 @@ export async function getAllTopicReplies(
 
     const data: V2exRepliesResponse = await response.json();
     
+    if (!data.success) {
+      throw new Error(`API returned error: ${data.message || 'Unknown error'}`);
+    }
+    
     if (data.result && data.result.length > 0) {
       allReplies.push(...data.result);
     }
 
-    totalPages = data.total_pages || 1;
+    // 从 pagination.pages 获取总页数
+    totalPages = data.pagination?.pages || 1;
     
+    // 调用进度回调
     if (onProgress) {
       onProgress(page, totalPages);
+    }
+
+    // 如果当前页没有数据或已经获取完所有页面，退出循环
+    if (page >= totalPages) {
+      break;
     }
 
     page++;
@@ -132,26 +146,30 @@ export async function getAllTopicReplies(
  * 格式化主题和回复为文本
  */
 export function formatTopicForAI(topic: V2exTopic, replies: V2exReply[]): string {
-  const parts = [`帖子标题:\n${topic.title}`];
+  const parts: string[] = [];
   
+  // 帖子标题
+  parts.push(`## 帖子标题\n${topic.title}`);
+  
+  // 作者信息
   if (topic.member) {
-    parts.push(`作者:\n${topic.member.username}`);
+    parts.push(`**作者**：${topic.member.username}`);
   }
   
-  if (topic.content) {
-    parts.push(`帖子内容:\n${topic.content}`);
-  } else {
-    parts.push(`帖子内容:\n${topic.title}`);
+  // 帖子内容
+  if (topic.content && topic.content.trim()) {
+    parts.push(`## 帖子内容\n${topic.content}`);
   }
   
+  // 评论部分
   if (replies.length > 0) {
-    const comments = replies.map(reply => {
+    parts.push(`## 评论（共 ${replies.length} 条）`);
+    replies.forEach((reply, index) => {
       const username = reply.member?.username || '匿名用户';
-      return `${username} 说:\n---\n${reply.content}\n---\n`;
+      parts.push(`### 评论 ${index + 1} - ${username}\n${reply.content}\n`);
     });
-    parts.push(`下面都是大家的评论:\n${comments.join('\n')}`);
   } else {
-    parts.push(`该文章目前还没有评论`);
+    parts.push(`## 评论\n暂无评论`);
   }
   
   return parts.join('\n\n');
