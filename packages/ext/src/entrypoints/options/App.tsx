@@ -106,22 +106,24 @@ function App() {
 
         <div className="bg-white shadow rounded-lg p-6">
           <div className="space-y-6">
-            {/* API URL - 已弃用 */}
-            <div className="opacity-50">
+            {/* OpenAI Base URL */}
+            <div>
               <label htmlFor="apiUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                后端 API 地址（已弃用）
+                OpenAI 基础地址（可选）
               </label>
               <input
                 type="url"
                 id="apiUrl"
                 value={config.apiUrl}
                 onChange={(e) => setConfig({ ...config, apiUrl: e.target.value })}
-                placeholder="https://your-backend-server.com"
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                placeholder="https://api.openai.com/v1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="mt-1 text-sm text-gray-500">
-                此配置项已废弃，扩展现在直接调用 AI API
+                OpenAI API 的基础地址（留空使用默认值）
+              </p>
+              <p className="mt-1 text-xs text-blue-600">
+                💡 支持自定义端点：Azure OpenAI、本地服务（Ollama/LM Studio）等
               </p>
             </div>
 
@@ -276,15 +278,16 @@ function App() {
         <div className="mt-8 text-center">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <p className="text-sm text-blue-800 font-medium mb-2">
-              ℹ️ 新架构说明（v2.0）
+              ℹ️ 架构说明
             </p>
             <p className="text-xs text-blue-700 text-left">
-              Chaonima 现在使用直连架构，无需后端服务器：<br/>
-              <span className="font-mono">浏览器扩展 → V2EX API（获取内容）→ 直接调用 AI API（Gemini/OpenAI）</span><br/><br/>
+              Chaonima 使用直连架构，无需独立后端服务器：<br/>
+              <span className="font-mono">浏览器扩展 → V2EX API（获取内容）→ AI API（Gemini/OpenAI）</span><br/><br/>
               • <strong>V2EX Token</strong>：用于从 V2EX 获取帖子和回复数据<br/>
-              • <strong>AI API Key</strong>：用于直接调用 Gemini 或 OpenAI 进行总结<br/>
-              • <strong>无需后端</strong>：扩展直接调用 API，更快更私密<br/>
-              • 根据选择的模型自动识别使用 Gemini 还是 OpenAI
+              • <strong>OpenAI 基础地址</strong>：自定义 AI API 端点（可选，支持 Azure OpenAI、本地服务等）<br/>
+              • <strong>AI API Key</strong>：用于调用 Gemini 或 OpenAI<br/>
+              • <strong>模型选择</strong>：根据模型名称自动识别使用 Gemini 还是 OpenAI API<br/>
+              • V2EX API 固定使用官方地址：https://www.v2ex.com/api/v2/
             </p>
           </div>
           <p className="text-sm text-gray-500">

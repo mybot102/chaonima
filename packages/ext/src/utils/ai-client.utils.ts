@@ -29,7 +29,8 @@ export async function callGeminiStream(
   text: string,
   model: string,
   enableThinking: boolean,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
+  baseUrl?: string
 ): Promise<void> {
   const instruction = [
     "我会给你发一篇帖子，可能会包含网友们的评论。",
@@ -47,7 +48,8 @@ export async function callGeminiStream(
     },
   };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const base = baseUrl || 'https://generativelanguage.googleapis.com';
+  const url = `${base}/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -106,7 +108,8 @@ export async function callOpenAIStream(
   apiKey: string,
   text: string,
   model: string,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
+  baseUrl?: string
 ): Promise<void> {
   const instruction = [
     "我会给你发一篇帖子，可能会包含网友们的评论。",
@@ -131,7 +134,10 @@ export async function callOpenAIStream(
     stream: true,
   };
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const base = baseUrl || 'https://api.openai.com/v1';
+  const url = `${base}/chat/completions`;
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -215,14 +221,15 @@ export async function callAIStream(
   text: string,
   model: string,
   enableThinking: boolean,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
+  baseUrl?: string
 ): Promise<void> {
   const provider = getAPIProvider(model);
   
   if (provider === 'gemini') {
-    return callGeminiStream(apiKey, text, model, enableThinking, onChunk);
+    return callGeminiStream(apiKey, text, model, enableThinking, onChunk, baseUrl);
   } else if (provider === 'openai') {
-    return callOpenAIStream(apiKey, text, model, onChunk);
+    return callOpenAIStream(apiKey, text, model, onChunk, baseUrl);
   } else {
     throw new Error(`未知的模型类型: ${model}。请选择 Gemini 或 GPT 系列模型。`);
   }

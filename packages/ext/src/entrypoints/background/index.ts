@@ -161,6 +161,7 @@ async function getChaonima(text: string, id: string, tab: Tab) {
   }
 
   const apiKey = config.apiKey || import.meta.env.VITE_API_KEY;
+  const apiUrl = config.apiUrl; // OpenAI base URL
   const model = config.model || 'gemini-2.5-flash-preview-09-2025';
   const enableThinking = config.enableThinking || false;
   
@@ -172,12 +173,12 @@ async function getChaonima(text: string, id: string, tab: Tab) {
   }
   
   try {
-    // 直接调用 AI API（Gemini 或 OpenAI）
-    await callAIStream(apiKey, text, model, enableThinking, onChunk);
+    // 直接调用 AI API（Gemini 或 OpenAI），支持自定义 base URL
+    await callAIStream(apiKey, text, model, enableThinking, onChunk, apiUrl);
     PostByUrl.delete(id);
   } catch (e) {
     logger.error('AI API call failed:', e);
-    const errorMsg = `AI 调用失败: ${e.message}\n\n请检查：\n1. API Key 是否正确\n2. 模型名称是否正确\n3. 网络连接是否正常`;
+    const errorMsg = `AI 调用失败: ${e.message}\n\n请检查：\n1. API Key 是否正确\n2. 模型名称是否正确\n3. API 地址是否正确\n4. 网络连接是否正常`;
     onChunk(errorMsg);
     port.disconnect();
   }
