@@ -67,16 +67,36 @@ jobs:
           name: chrome-extension-zip
           path: |
             dist/*.zip
+            packages/ext/.output/*.zip
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Firefox ZIP package
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-extension-zip
+          path: |
+            dist/*.zip
+            packages/ext/.output/*.zip
           retention-days: 30
           if-no-files-found: warn
 
       - name: List build outputs
         run: |
           echo "=== Build Output Structure ==="
-          find dist -type f -name "*.zip" -o -name "manifest.json" | head -20 || true
+          echo "Checking dist directory:"
+          find dist -type f \( -name "*.zip" -o -name "manifest.json" \) 2>/dev/null | head -20 || echo "No files in dist"
+          echo ""
+          echo "Checking packages/ext/.output directory:"
+          find packages/ext/.output -type f \( -name "*.zip" -o -name "manifest.json" \) 2>/dev/null | head -20 || echo "No files in .output"
           echo ""
           echo "=== Chrome Extension Files ==="
-          ls -la dist/chrome-mv3/ || echo "Chrome build not found"
+          ls -la dist/chrome-mv3/ 2>/dev/null || echo "Chrome build not found in dist"
+          ls -la packages/ext/.output/chrome-mv3/ 2>/dev/null || echo "Chrome build not found in .output"
           echo ""
           echo "=== Firefox Extension Files ==="
-          ls -la dist/firefox-mv2/ || echo "Firefox build not found"
+          ls -la dist/firefox-mv2/ 2>/dev/null || echo "Firefox build not found in dist"
+          ls -la packages/ext/.output/firefox-mv2/ 2>/dev/null || echo "Firefox build not found in .output"
+          echo ""
+          echo "=== ZIP Files ==="
+          find . -name "*.zip" -type f 2>/dev/null | head -10 || echo "No ZIP files found"
