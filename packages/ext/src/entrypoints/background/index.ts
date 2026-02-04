@@ -15,8 +15,16 @@ import {
   MessageCheckingRemoteSaved,
   MESSAGE_REMOTE_TEXT,
   MessageRemoteText,
+  MESSAGE_FETCH_PROGRESS,
+  MessageFetchProgress,
+  MESSAGE_THINKING_CHUNK,
+  MessageThinkingChunk,
+  MESSAGE_AI_PROCESSING,
+  MessageAIProcessing,
 } from '@/utils/message';
-import { fetchTextStream } from 'preview/plain';
+import { getConfig } from '@/utils/storage.utils';
+import { extractTopicId, getTopic, getAllTopicReplies, formatTopicForAI } from '@/utils/v2ex-api.utils';
+import { callAIStream } from '@/utils/ai-client.utils';
 import * as z from 'zod';
 
 export default defineBackground(() => {
@@ -46,11 +54,13 @@ const handler = {
     if (!tab || !tab.url || !tab.id) {
       throw new Error(`Invalid tab url=${tab?.url} id=${tab?.id}`);
     }
-    const id = await getPostId(tab.url);
-    if (!id) {
-      throw new Error('Can not get post id');
+    
+    const topicId = extractTopicId(tab.url);
+    if (!topicId) {
+      throw new Error('Can not extract topic id from URL');
     }
-
+    
+    const id = await getPostId(tab.url);
     const info = PostByUrl.get(id);
 
     if (msg.payload.checkState && !info) {
@@ -68,113 +78,63 @@ const handler = {
       }
     }
 
-    browser.tabs.sendMessage(tab.id, {
-      type: MESSAGE_CHECKING_REMOTE_SAVED,
-    } satisfies z.infer<typeof MessageCheckingRemoteSaved>);
-    const text = await fetchSummary(id);
-    if (text) {
-      browser.tabs.sendMessage(tab.id, {
-        type: MESSAGE_REMOTE_TEXT,
-        payload: { text },
-      } satisfies z.infer<typeof MessageRemoteText>);
-      return;
-    }
-
-    if (!info && !msg.payload.checkState) {
+    // 使用 V2EX API 获取数据并直接调用 AI
+    if (!msg.payload.checkState) {
       PostByUrl.set(id, { time: Date.now(), url: id });
       deletePost10MinLater(id);
-      browser.tabs.sendMessage(tab.id, {
-        type: MESSAGE_RETRIEVE_POST_INFO,
-        payload: { url: id },
-      } satisfies z.infer<typeof MessageRetrievePostInfo>);
-    } else if (info) {
-      if (info.title) {
+      
+      try {
+        const config = await getConfig();
+        const token = config.v2exToken;
+        
+        // 获取主题详情
+        const topic = await getTopic(topicId, token);
+        
+        // 获取所有回复，显示进度
+        const replies = await getAllTopicReplies(topicId, token, (current, total) => {
+          // 发送进度消息到 content script
+          browser.tabs.sendMessage(tab.id!, {
+            type: MESSAGE_FETCH_PROGRESS,
+            payload: {
+              current,
+              total,
+              message: `正在获取评论... (${current}/${total})`,
+            },
+          } satisfies z.infer<typeof MessageFetchProgress>).catch(err => {
+            // 忽略发送失败的错误（可能 content script 还未准备好）
+            logger.warn('Failed to send progress message:', err);
+          });
+        });
+        
+        // 格式化为文本
+        const formattedText = formatTopicForAI(topic, replies);
+        
+        // 清除进度显示，通知开始 AI 处理
+        browser.tabs.sendMessage(tab.id!, {
+          type: MESSAGE_AI_PROCESSING,
+        } satisfies z.infer<typeof MessageAIProcessing>).catch(err => {
+          logger.warn('Failed to send AI processing message:', err);
+        });
+        
+        // 发送给 AI 总结
+        getChaonima(formattedText, id, tab);
+      } catch (error) {
+        logger.error('Failed to fetch topic from V2EX API:', error);
+        // 发送错误消息到 content script
         browser.tabs.sendMessage(tab.id, {
-          type: MESSAGE_RETRIEVE_COMMENTS,
-          payload: { url: id },
-        } satisfies z.infer<typeof MessageRetrieveComments>);
-      } else {
-        browser.tabs.sendMessage(tab.id, {
-          type: MESSAGE_RETRIEVE_POST_INFO,
-          payload: { url: id },
-        } satisfies z.infer<typeof MessageRetrievePostInfo>);
+          type: MESSAGE_REMOTE_TEXT,
+          payload: { text: `获取 V2EX 数据失败: ${error.message}\n\n请检查：\n1. 是否已在设置中配置 V2EX Token\n2. Token 是否有效\n3. 网络连接是否正常` },
+        } satisfies z.infer<typeof MessageRemoteText>);
       }
     }
   },
 
+  // MESSAGE_UPDATE_INFO 不再需要，因为我们通过 API 直接获取所有数据
   [MESSAGE_UPDATE_INFO]: async (m: unknown, sender: Sender) => {
-    const msg = MessageUpdateInfo.parse(m);
-    const payload = msg.payload;
-    const url = payload?.url;
-    if (!url) throw new Error('Expect url in message payload');
-
-    const info = updatePost(url, payload);
-
-    const tab = await getCurrentTab(sender);
-    if (!tab || !tab.id) {
-      throw new Error('handle update_info: tab is not available');
-    }
-
-    // dont proceed if we dont have enough info
-    if (!info.title) return;
-
-    if (!loadNextPage(url, tab.id)) {
-      const text = generateText(info);
-      if (text) getChaonima(text, url, tab);
-    }
+    // 保留以兼容旧消息，但不执行任何操作
+    logger.info('MESSAGE_UPDATE_INFO received but ignored (using V2EX API now)');
   },
 };
-
-function loadNextPage(id: string, tabId: number) {
-  const info = PostByUrl.get(id);
-  if (!info) {
-    throw new Error(`info not found for ${id}`);
-  }
-  const totalPages = info.totalPages;
-  const commentsByPage = info.commentsByPage;
-  if (typeof totalPages !== 'number' || !commentsByPage) {
-    throw new Error(`invalid totalPages or missing commentsByPage for ${id}`);
-  }
-
-  for (let i = 1; i <= totalPages; i++) {
-    if (!commentsByPage[i]) {
-      const url = info.url + '?p=' + i;
-      browser.tabs.update(tabId, { url });
-      return true;
-    }
-  }
-  return false;
-}
-
-function generateText(info: Partial<PostInfo>) {
-  if (!info.commentsByPage) {
-    logger.error('Not able to generateText - commentsByPage is undefined');
-    return;
-  }
-
-  const comments: string[] = [];
-  for (const key of Object.keys(info.commentsByPage)) {
-    for (const { user, reply } of info.commentsByPage[key]) {
-      comments.push(`${user} 说:\n---\n${reply}\n---\n`);
-    }
-  }
-  const parts = [`帖子标题:\n${info.title}`];
-  if (info.author) {
-    parts.push(`作者:\n${info.author}`);
-  }
-  if (info.body) {
-    parts.push(`帖子内容:\n${info.body}`);
-  } else {
-    // it's allowed to not have post content
-    parts.push(`帖子内容:\n${info.title}`);
-  }
-  if (comments.length > 0) {
-    parts.push(`下面都是大家的评论:\n${comments.join('\n')}`);
-  } else {
-    parts.push(`该文章目前还没有评论`);
-  }
-  return parts.join('\n\n');
-}
 
 function armListeners() {
   browser.runtime.onMessage.addListener((msg, sender, _reply) => {
@@ -214,69 +174,84 @@ async function getPostId(url: string) {
 
 async function getChaonima(text: string, id: string, tab: Tab) {
   const port = browser.tabs.connect(tab.id!);
+  const config = await getConfig();
 
-  let ret = '';
   let firstChunk = true;
-  function onmessage(text: string) {
-    ret += text;
+  function onChunk(chunkText: string) {
     const msg = {
       type: MESSAGE_LLM_TEXT_CHUNK,
-      payload: { text, firstChunk },
+      payload: { text: chunkText, firstChunk },
     } satisfies z.infer<typeof MessageLlmTextChunk>;
     port.postMessage(msg);
     firstChunk = false;
   }
 
-  const url = `${import.meta.env.VITE_API_BASE_URL}/api/v2ex/streamGenerateContent`;
+  function onThinking(thinkingText: string) {
+    const msg = {
+      type: MESSAGE_THINKING_CHUNK,
+      payload: { text: thinkingText },
+    } satisfies z.infer<typeof MessageThinkingChunk>;
+    port.postMessage(msg);
+  }
+
+  const apiKey = config.apiKey || import.meta.env.VITE_API_KEY;
+  const apiUrl = config.apiUrl; // OpenAI base URL
+  const model = config.model || 'gpt-4o-mini';
+  const enableThinking = config.enableThinking || false;
+  
+  if (!apiKey) {
+    const errorMsg = '请在设置中配置 AI API Key';
+    onChunk(errorMsg);
+    port.disconnect();
+    return;
+  }
+  
   try {
-    await fetchTextStream(url, {
-      method: 'POST',
-      body: JSON.stringify({ text, id }),
-      onmessage,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': import.meta.env.VITE_API_KEY,
-      },
+    // 直接调用 OpenAI 兼容 API，支持自定义 base URL
+    logger.info('开始调用 AI API', {
+      model,
+      baseUrl: apiUrl || '默认',
+      apiKey: apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : '未设置',
+      enableThinking,
     });
+    await callAIStream(apiKey, text, model, enableThinking, onChunk, enableThinking ? onThinking : undefined, apiUrl);
     PostByUrl.delete(id);
   } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e));
+    const maskedKey = apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : '未设置';
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      model,
+      baseUrl: apiUrl || '默认',
+      apiKey: maskedKey,
+      enableThinking,
+    };
+    logger.error('AI API call failed:', errorDetails);
+    
+    // 构建详细的错误信息
+    let errorMsg = `AI 调用失败: ${error.message}\n\n`;
+    errorMsg += `详细信息：\n`;
+    errorMsg += `- 模型名称: ${model}\n`;
+    errorMsg += `- API 地址: ${apiUrl || '默认（api.openai.com/v1）'}\n`;
+    errorMsg += `- API Key: ${maskedKey}\n`;
+    errorMsg += `- 思考模式: ${enableThinking ? '启用' : '禁用'}\n\n`;
+    errorMsg += `请检查：\n`;
+    errorMsg += `1. API Key 是否正确（当前: ${maskedKey}）\n`;
+    errorMsg += `2. 模型名称是否正确（当前: ${model}）\n`;
+    errorMsg += `3. API 地址是否正确（当前: ${apiUrl || '默认'}）\n`;
+    errorMsg += `4. 网络连接是否正常\n`;
+    if (error.stack) {
+      errorMsg += `\n技术详情（开发者模式）：\n${error.stack}`;
+    }
+    
+    onChunk(errorMsg);
     port.disconnect();
   }
-}
-
-function updatePost(id: string, payload: z.infer<typeof MessageUpdateInfo>['payload']) {
-  let info = PostByUrl.get(id);
-  if (!info) {
-    throw new Error(`Expect post ${id} info is already in store`);
-  }
-
-  if ('title' in payload && payload.title) {
-    info.title = payload.title;
-    info.body = payload.body;
-    info.author = payload.author;
-    info.totalPages = payload.totalPages;
-  }
-
-  info.commentsByPage = {
-    ...info.commentsByPage,
-    [payload.currentPage]: payload.comments,
-  };
-  info.time = Date.now();
-
-  deletePost10MinLater(id);
-
-  return info;
 }
 
 function deletePost10MinLater(id: string) {
   setTimeout(() => {
     PostByUrl.delete(id);
   }, 600_000 /* 10 minutes */);
-}
-
-async function fetchSummary(id: string) {
-  const url = `${import.meta.env.VITE_API_BASE_URL}/api/v2ex/summaries?${new URLSearchParams({ id })}`;
-  const res = await fetch(url, { headers: { 'x-api-key': import.meta.env.VITE_API_KEY } });
-  if (!res.ok) return;
-  return await res.text();
 }

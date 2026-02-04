@@ -47,7 +47,7 @@ export class Gemini {
     this.ky = ky.create({ prefixUrl, headers });
   }
 
-  static buildGenerateContentRequestBody(text: string, instruction?: string) {
+  static buildGenerateContentRequestBody(text: string, instruction?: string, enableThinking = false) {
     const contents = [{ parts: [{ text }] }];
     return {
       ...(instruction
@@ -57,7 +57,7 @@ export class Gemini {
         : undefined),
       contents,
       generationConfig: {
-        thinkingConfig: { includeThoughts: false },
+        thinkingConfig: { includeThoughts: enableThinking },
       },
     };
   }

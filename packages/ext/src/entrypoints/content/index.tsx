@@ -1,6 +1,6 @@
 import { browser, defineContentScript } from '#imports';
 import { ContentUi } from './ContentUi';
-import { setLoading } from './Start';
+import { setLoading, setProgress, setAIStatus } from './Start';
 import { setGlobalContext, StartUi } from './StartUi';
 import {
   MESSAGE_LLM_TEXT_CHUNK,
@@ -16,8 +16,14 @@ import {
   MESSAGE_CHECKING_REMOTE_SAVED,
   MESSAGE_REMOTE_TEXT,
   MessageRemoteText,
+  MESSAGE_FETCH_PROGRESS,
+  MessageFetchProgress,
+  MESSAGE_THINKING_CHUNK,
+  MessageThinkingChunk,
+  MESSAGE_AI_PROCESSING,
+  MessageAIProcessing,
 } from '@/utils/message';
-import { appendText } from 'preview/react';
+import { appendText, appendThinking, clearAll } from 'preview/react';
 import * as z from 'zod';
 
 export default defineContentScript({
@@ -79,15 +85,10 @@ async function handleRetrieveComments(msg: { payload: { url: string } }) {
 function armListeners() {
   browser.runtime.onMessage.addListener((m, sender, reply) => {
     switch (m.type) {
-      case MESSAGE_RETRIEVE_POST_INFO: {
-        const msg = MessageRetrievePostInfo.parse(m);
-        handleRetrievePostInfo(msg);
-        return false;
-      }
-
+      case MESSAGE_RETRIEVE_POST_INFO:
       case MESSAGE_RETRIEVE_COMMENTS: {
-        const msg = MessageRetrieveComments.parse(m);
-        handleRetrieveComments(msg);
+        // These messages are no longer used with V2EX API
+        // Kept for backwards compatibility but do nothing
         return false;
       }
 
@@ -100,9 +101,29 @@ function armListeners() {
         ContentUi.mount();
         StartUi.unmount();
         setLoading(false);
+        setProgress(null);
         const message = MessageRemoteText.parse(m);
         const text = message.payload.text;
         appendText(text);
+        return false;
+      }
+
+      case MESSAGE_FETCH_PROGRESS: {
+        const message = MessageFetchProgress.parse(m);
+        setProgress({
+          current: message.payload.current,
+          total: message.payload.total,
+          message: message.payload.message,
+        });
+        return false;
+      }
+
+      case MESSAGE_AI_PROCESSING: {
+        MessageAIProcessing.parse(m);
+        // 清除进度显示，更新为 AI 处理状态
+        setProgress(null);
+        setLoading(true);
+        setAIStatus('processing');
         return false;
       }
 
@@ -123,10 +144,22 @@ function armListeners() {
           if (message.payload.firstChunk) {
             StartUi.unmount();
             setLoading(false);
+            setProgress(null);
+            clearAll(); // 清除之前的内容和思考内容
           }
 
           const text = message.payload.text;
           appendText(text);
+          return false;
+        }
+        case MESSAGE_THINKING_CHUNK: {
+          ContentUi.mount();
+
+          const message = MessageThinkingChunk.parse(m);
+          const thinkingText = message.payload.text;
+          appendThinking(thinkingText);
+          // 更新状态为思考中
+          setAIStatus('thinking');
           return false;
         }
         default: {
@@ -136,6 +169,9 @@ function armListeners() {
     });
   });
 }
+
+// The following DOM scraping functions are no longer used with V2EX API
+// Kept for reference but not called anymore
 
 function getPageInfo() {
   const ps = document.querySelector('#Main .ps_container');
