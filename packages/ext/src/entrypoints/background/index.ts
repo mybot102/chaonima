@@ -47,6 +47,21 @@ type PostInfo = {
 const PostByUrl = new Map<string, Partial<PostInfo>>();
 
 const handler = {
+  ['OPEN_SIDEPANEL']: async (m: unknown, sender: Sender) => {
+    const tab = await getCurrentTab(sender);
+    if (!tab || !tab.id) {
+      throw new Error('Invalid tab');
+    }
+    
+    // 打开侧边栏
+    try {
+      await browser.sidePanel.open({ tabId: tab.id });
+      logger.info('Sidepanel opened for tab:', tab.id);
+    } catch (error) {
+      logger.error('Failed to open sidepanel:', error);
+    }
+  },
+
   [MESSAGE_START]: async (m: unknown, sender: Sender) => {
     const msg = MessageStart.parse(m);
 
@@ -173,7 +188,9 @@ async function getPostId(url: string) {
 }
 
 async function getChaonima(text: string, id: string, tab: Tab) {
-  const port = browser.tabs.connect(tab.id!);
+  // 连接到所有监听器（侧边栏和 content script）
+  // 使用 runtime.connect 而不是 tabs.connect，这样侧边栏也能收到
+  const port = browser.runtime.connect({ name: 'ai-stream' });
   const config = await getConfig();
 
   let firstChunk = true;
@@ -182,7 +199,12 @@ async function getChaonima(text: string, id: string, tab: Tab) {
       type: MESSAGE_LLM_TEXT_CHUNK,
       payload: { text: chunkText, firstChunk },
     } satisfies z.infer<typeof MessageLlmTextChunk>;
+    // 发送到所有连接的监听器
     port.postMessage(msg);
+    // 也通过 runtime.sendMessage 广播（用于侧边栏）
+    browser.runtime.sendMessage(msg).catch(() => {
+      // 忽略错误，因为可能没有侧边栏在监听
+    });
     firstChunk = false;
   }
 
@@ -192,6 +214,10 @@ async function getChaonima(text: string, id: string, tab: Tab) {
       payload: { text: thinkingText },
     } satisfies z.infer<typeof MessageThinkingChunk>;
     port.postMessage(msg);
+    // 也通过 runtime.sendMessage 广播（用于侧边栏）
+    browser.runtime.sendMessage(msg).catch(() => {
+      // 忽略错误
+    });
   }
 
   const apiKey = config.apiKey || import.meta.env.VITE_API_KEY;

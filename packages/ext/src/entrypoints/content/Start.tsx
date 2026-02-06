@@ -32,6 +32,14 @@ export function Start() {
   const onClick = useCallback(() => {
     setLoading(true);
     (async () => {
+      // 打开侧边栏
+      try {
+        await browser.runtime.sendMessage({ type: 'OPEN_SIDEPANEL' });
+      } catch (error) {
+        console.error('Failed to open sidepanel:', error);
+      }
+      
+      // 发送开始消息
       const m = { type: MESSAGE_START, payload: {} } satisfies z.infer<typeof MessageStart>;
       browser.runtime.sendMessage(m);
     })();

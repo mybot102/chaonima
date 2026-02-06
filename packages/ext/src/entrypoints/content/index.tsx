@@ -98,13 +98,10 @@ function armListeners() {
       }
 
       case MESSAGE_REMOTE_TEXT: {
-        ContentUi.mount();
-        StartUi.unmount();
+        // 不再在页面中显示，消息会被发送到侧边栏
+        // 但我们需要更新按钮状态
         setLoading(false);
         setProgress(null);
-        const message = MessageRemoteText.parse(m);
-        const text = message.payload.text;
-        appendText(text);
         return false;
       }
 
@@ -137,39 +134,27 @@ function armListeners() {
     port.onMessage.addListener((m, port) => {
       switch (m.type) {
         case MESSAGE_LLM_TEXT_CHUNK: {
-          ContentUi.mount();
-
+          // 不再在页面中显示，消息会被转发到侧边栏
           const message = MessageLlmTextChunk.parse(m);
 
           if (message.payload.firstChunk) {
-            StartUi.unmount();
+            // 只更新按钮状态
             setLoading(false);
             setProgress(null);
-            clearAll(); // 清除之前的内容和思考内容
           }
-
-          const text = message.payload.text;
-          appendText(text);
           return false;
         }
         case MESSAGE_THINKING_CHUNK: {
+          // 不再在页面中显示，消息会被转发到侧边栏
           const message = MessageThinkingChunk.parse(m);
-          const thinkingText = message.payload.text;
           
-          // 只在收到第一个思考内容时挂载 UI 和清理启动界面
-          // 通过检查 thinkingSignal 的值是否为空来判断是否是第一次
-          // 注意：这里调用 StartUi.unmount() 清理启动界面是合理的，因为在启用思考模式时，
-          // 思考内容会在主要内容之前到达，此时正是用户看到 AI 开始响应的时刻
+          // 只在首次思考内容时更新状态
           const isFirstThinking = thinkingSignal.value.length === 0;
           if (isFirstThinking) {
-            ContentUi.mount();
-            StartUi.unmount();
             setLoading(false);
             setProgress(null);
             setAIStatus('thinking');
           }
-          
-          appendThinking(thinkingText);
           return false;
         }
         default: {
