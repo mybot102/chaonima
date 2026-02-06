@@ -22,5 +22,8 @@ export default defineConfig({
       48: '/icon/chaonima-main-48.png',
       128: '/icon/chaonima-main-128.png',
     },
+    side_panel: {
+      default_path: '/sidepanel/index.html',
+    },
   },
 });
