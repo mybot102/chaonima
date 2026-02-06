@@ -32,15 +32,16 @@ export function Start() {
   const onClick = useCallback(() => {
     setLoading(true);
     (async () => {
-      // 打开侧边栏
+      // 打开侧边栏并自动开始任务
       try {
         await browser.runtime.sendMessage({ 
-          type: MESSAGE_OPEN_SIDEPANEL 
+          type: MESSAGE_OPEN_SIDEPANEL,
+          payload: { autoStart: true }
         } satisfies z.infer<typeof MessageOpenSidepanel>);
         
-        // 侧边栏打开成功后，发送开始消息
-        const m = { type: MESSAGE_START, payload: {} } satisfies z.infer<typeof MessageStart>;
-        browser.runtime.sendMessage(m);
+        // 移除原有的 MESSAGE_START 发送，改为由 Sidepanel Ready 触发或 Sidepanel Alive Ack 触发
+        // 但为了保证 UI 状态正确，我们可能需要监听来自 background 的进度消息
+        // 上面的 setLoading(true) 已经设置了初始状态
       } catch (error) {
         console.error('Failed to open sidepanel:', error);
         setLoading(false);
