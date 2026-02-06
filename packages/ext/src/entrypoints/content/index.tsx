@@ -23,7 +23,7 @@ import {
   MESSAGE_AI_PROCESSING,
   MessageAIProcessing,
 } from '@/utils/message';
-import { appendText, appendThinking, clearAll, clearText } from 'preview/react';
+import { appendText, appendThinking, clearAll } from 'preview/react';
 import * as z from 'zod';
 
 export default defineContentScript({
@@ -124,7 +124,6 @@ function armListeners() {
         setProgress(null);
         setLoading(true);
         setAIStatus('processing');
-        clearAll(); // 开始处理时清空所有内容
         return false;
       }
 
@@ -146,7 +145,7 @@ function armListeners() {
             StartUi.unmount();
             setLoading(false);
             setProgress(null);
-            clearText(); // 仅清空文本内容，保留思考内容
+            clearAll(); // 清除之前的内容和思考内容
           }
 
           const text = message.payload.text;

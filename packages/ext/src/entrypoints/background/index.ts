@@ -121,10 +121,9 @@ const handler = {
       } catch (error) {
         logger.error('Failed to fetch topic from V2EX API:', error);
         // 发送错误消息到 content script
-        const errorMessage = error instanceof Error ? error.message : String(error);
         browser.tabs.sendMessage(tab.id, {
           type: MESSAGE_REMOTE_TEXT,
-          payload: { text: `获取 V2EX 数据失败: ${errorMessage}\n\n请检查：\n1. 是否已在设置中配置 V2EX Token\n2. Token 是否有效\n3. 网络连接是否正常` },
+          payload: { text: `获取 V2EX 数据失败: ${error.message}\n\n请检查：\n1. 是否已在设置中配置 V2EX Token\n2. Token 是否有效\n3. 网络连接是否正常` },
         } satisfies z.infer<typeof MessageRemoteText>);
       }
     }

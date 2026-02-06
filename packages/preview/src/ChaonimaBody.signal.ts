@@ -15,7 +15,3 @@ export function clearAll() {
   textSignal.value = "";
   thinkingSignal.value = "";
 }
-
-export function clearText() {
-  textSignal.value = "";
-}

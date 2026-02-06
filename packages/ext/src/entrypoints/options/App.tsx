@@ -355,7 +355,7 @@ function App() {
             需要帮助？查看 <a href="https://github.com/haishanh/chaonima" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">项目文档</a>
           </p>
           <p className="text-sm text-gray-500">
-            版本：0435
+            版本：0455
           </p>
           <div className="mt-4">
             <a
