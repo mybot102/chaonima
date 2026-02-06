@@ -17,9 +17,22 @@ import {
 
 export function App() {
   useEffect(() => {
-    // 监听来自 background/content script 的消息
+    // 监听来自 background script 的消息
     const messageListener = (message: any) => {
       switch (message.type) {
+        case MESSAGE_LLM_TEXT_CHUNK: {
+          const msg = MessageLlmTextChunk.parse(message);
+          if (msg.payload.firstChunk) {
+            clearAll();
+          }
+          appendText(msg.payload.text);
+          break;
+        }
+        case MESSAGE_THINKING_CHUNK: {
+          const msg = MessageThinkingChunk.parse(message);
+          appendThinking(msg.payload.text);
+          break;
+        }
         case MESSAGE_REMOTE_TEXT: {
           const msg = MessageRemoteText.parse(message);
           clearAll();
@@ -27,39 +40,15 @@ export function App() {
           break;
         }
         default:
-          console.log('Sidepanel received unknown message:', message.type);
+          // 忽略未知消息类型
+          break;
       }
     };
 
-    // 监听端口连接（用于流式数据）
-    const portListener = (port: browser.runtime.Port) => {
-      port.onMessage.addListener((message: any) => {
-        switch (message.type) {
-          case MESSAGE_LLM_TEXT_CHUNK: {
-            const msg = MessageLlmTextChunk.parse(message);
-            if (msg.payload.firstChunk) {
-              clearAll();
-            }
-            appendText(msg.payload.text);
-            break;
-          }
-          case MESSAGE_THINKING_CHUNK: {
-            const msg = MessageThinkingChunk.parse(message);
-            appendThinking(msg.payload.text);
-            break;
-          }
-          default:
-            console.log('Sidepanel port received unknown message:', message.type);
-        }
-      });
-    };
-
     browser.runtime.onMessage.addListener(messageListener);
-    browser.runtime.onConnect.addListener(portListener);
 
     return () => {
       browser.runtime.onMessage.removeListener(messageListener);
-      browser.runtime.onConnect.removeListener(portListener);
     };
   }, []);
 

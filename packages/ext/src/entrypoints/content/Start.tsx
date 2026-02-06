@@ -1,5 +1,5 @@
 import { browser } from '#imports';
-import { MESSAGE_START, MessageStart } from '@/utils/message';
+import { MESSAGE_START, MessageStart, MESSAGE_OPEN_SIDEPANEL, MessageOpenSidepanel } from '@/utils/message';
 import { signal } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { Button, StarAi } from 'preview/react';
@@ -34,7 +34,9 @@ export function Start() {
     (async () => {
       // 打开侧边栏
       try {
-        await browser.runtime.sendMessage({ type: 'OPEN_SIDEPANEL' });
+        await browser.runtime.sendMessage({ 
+          type: MESSAGE_OPEN_SIDEPANEL 
+        } satisfies z.infer<typeof MessageOpenSidepanel>);
       } catch (error) {
         console.error('Failed to open sidepanel:', error);
       }

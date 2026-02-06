@@ -93,3 +93,9 @@ export const MESSAGE_AI_PROCESSING = 'MESSAGE_AI_PROCESSING';
 export const MessageAIProcessing = z.object({
   type: z.literal(MESSAGE_AI_PROCESSING),
 });
+
+export const MESSAGE_OPEN_SIDEPANEL = 'MESSAGE_OPEN_SIDEPANEL';
+
+export const MessageOpenSidepanel = z.object({
+  type: z.literal(MESSAGE_OPEN_SIDEPANEL),
+});

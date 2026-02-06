@@ -21,6 +21,8 @@ import {
   MessageThinkingChunk,
   MESSAGE_AI_PROCESSING,
   MessageAIProcessing,
+  MESSAGE_OPEN_SIDEPANEL,
+  MessageOpenSidepanel,
 } from '@/utils/message';
 import { getConfig } from '@/utils/storage.utils';
 import { extractTopicId, getTopic, getAllTopicReplies, formatTopicForAI } from '@/utils/v2ex-api.utils';
@@ -47,7 +49,8 @@ type PostInfo = {
 const PostByUrl = new Map<string, Partial<PostInfo>>();
 
 const handler = {
-  ['OPEN_SIDEPANEL']: async (m: unknown, sender: Sender) => {
+  [MESSAGE_OPEN_SIDEPANEL]: async (m: unknown, sender: Sender) => {
+    const msg = MessageOpenSidepanel.parse(m);
     const tab = await getCurrentTab(sender);
     if (!tab || !tab.id) {
       throw new Error('Invalid tab');
@@ -188,9 +191,6 @@ async function getPostId(url: string) {
 }
 
 async function getChaonima(text: string, id: string, tab: Tab) {
-  // 连接到所有监听器（侧边栏和 content script）
-  // 使用 runtime.connect 而不是 tabs.connect，这样侧边栏也能收到
-  const port = browser.runtime.connect({ name: 'ai-stream' });
   const config = await getConfig();
 
   let firstChunk = true;
@@ -199,11 +199,10 @@ async function getChaonima(text: string, id: string, tab: Tab) {
       type: MESSAGE_LLM_TEXT_CHUNK,
       payload: { text: chunkText, firstChunk },
     } satisfies z.infer<typeof MessageLlmTextChunk>;
-    // 发送到所有连接的监听器
-    port.postMessage(msg);
-    // 也通过 runtime.sendMessage 广播（用于侧边栏）
-    browser.runtime.sendMessage(msg).catch(() => {
-      // 忽略错误，因为可能没有侧边栏在监听
+    // 广播消息到所有监听器（包括侧边栏）
+    browser.runtime.sendMessage(msg).catch((error) => {
+      // 忽略错误，因为可能没有监听器
+      logger.warn('Failed to send LLM chunk:', error);
     });
     firstChunk = false;
   }
@@ -213,10 +212,9 @@ async function getChaonima(text: string, id: string, tab: Tab) {
       type: MESSAGE_THINKING_CHUNK,
       payload: { text: thinkingText },
     } satisfies z.infer<typeof MessageThinkingChunk>;
-    port.postMessage(msg);
-    // 也通过 runtime.sendMessage 广播（用于侧边栏）
-    browser.runtime.sendMessage(msg).catch(() => {
-      // 忽略错误
+    // 广播消息到所有监听器（包括侧边栏）
+    browser.runtime.sendMessage(msg).catch((error) => {
+      logger.warn('Failed to send thinking chunk:', error);
     });
   }
 
@@ -228,7 +226,6 @@ async function getChaonima(text: string, id: string, tab: Tab) {
   if (!apiKey) {
     const errorMsg = '请在设置中配置 AI API Key';
     onChunk(errorMsg);
-    port.disconnect();
     return;
   }
   
@@ -272,7 +269,6 @@ async function getChaonima(text: string, id: string, tab: Tab) {
     }
     
     onChunk(errorMsg);
-    port.disconnect();
   }
 }
 
