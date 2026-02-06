@@ -23,7 +23,6 @@ import {
   MESSAGE_AI_PROCESSING,
   MessageAIProcessing,
 } from '@/utils/message';
-import { appendText, appendThinking, clearAll, thinkingSignal } from 'preview/react';
 import * as z from 'zod';
 
 export default defineContentScript({
@@ -146,15 +145,13 @@ function armListeners() {
         }
         case MESSAGE_THINKING_CHUNK: {
           // 不再在页面中显示，消息会被转发到侧边栏
+          // 只在首次思考内容时更新状态
           const message = MessageThinkingChunk.parse(m);
           
-          // 只在首次思考内容时更新状态
-          const isFirstThinking = thinkingSignal.value.length === 0;
-          if (isFirstThinking) {
-            setLoading(false);
-            setProgress(null);
-            setAIStatus('thinking');
-          }
+          // 简单地在首个消息时更新状态即可
+          setLoading(false);
+          setProgress(null);
+          setAIStatus('thinking');
           return false;
         }
         default: {

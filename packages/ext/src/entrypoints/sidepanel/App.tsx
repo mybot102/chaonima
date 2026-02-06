@@ -5,8 +5,6 @@ import {
   appendText, 
   appendThinking, 
   clearAll,
-  textSignal,
-  thinkingSignal 
 } from 'preview/react';
 import {
   MESSAGE_LLM_TEXT_CHUNK,
