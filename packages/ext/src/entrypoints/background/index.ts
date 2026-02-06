@@ -58,10 +58,23 @@ const handler = {
     
     // 打开侧边栏
     try {
-      await browser.sidePanel.open({ tabId: tab.id });
+      // Chrome Side Panel API: open for the specific tab or window
+      // 尝试使用 tabId，如果失败则使用 windowId
+      try {
+        await browser.sidePanel.open({ tabId: tab.id });
+      } catch (tabError) {
+        // 某些 Chrome 版本可能只支持 windowId
+        if (tab.windowId) {
+          await browser.sidePanel.open({ windowId: tab.windowId });
+        } else {
+          throw tabError;
+        }
+      }
       logger.info('Sidepanel opened for tab:', tab.id);
     } catch (error) {
       logger.error('Failed to open sidepanel:', error);
+      // 重新抛出错误，让调用者知道失败了
+      throw error;
     }
   },
 
