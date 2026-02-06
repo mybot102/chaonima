@@ -23,7 +23,7 @@ import {
   MESSAGE_AI_PROCESSING,
   MessageAIProcessing,
 } from '@/utils/message';
-import { appendText, appendThinking, clearAll } from 'preview/react';
+import { appendText, appendThinking, clearAll, thinkingSignal } from 'preview/react';
 import * as z from 'zod';
 
 export default defineContentScript({
@@ -157,8 +157,8 @@ function armListeners() {
           const thinkingText = message.payload.text;
           
           // 只在收到第一个思考内容时挂载 UI 和清理启动界面
-          // 通过检查 thinkingSignal 是否为空来判断是否是第一次
-          const isFirstThinkingChunk = !document.querySelector('#chaonima-v2ex-cnt');
+          // 通过检查 thinkingSignal 的值是否为空来判断是否是第一次
+          const isFirstThinkingChunk = thinkingSignal.value.length === 0;
           if (isFirstThinkingChunk) {
             ContentUi.mount();
             StartUi.unmount();
