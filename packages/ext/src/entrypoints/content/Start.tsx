@@ -2,7 +2,7 @@ import { browser } from '#imports';
 import { MESSAGE_START, MessageStart } from '@/utils/message';
 import { signal } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
-import { Button, StarAi } from 'preview/react';
+import { Button, StarAi, clearAll } from 'preview/react';
 import { useCallback } from 'react';
 import * as z from 'zod';
 
@@ -10,9 +10,9 @@ const loadingSignal = signal<boolean>(false);
 const progressSignal = signal<{ current: number; total: number; message?: string } | null>(null);
 const aiStatusSignal = signal<'idle' | 'processing' | 'thinking'>('idle');
 
-export function setLoading(v: boolean) {
-  loadingSignal.value = v;
-  if (!v) {
+export function setLoading(loading: boolean) {
+  loadingSignal.value = loading;
+  if (!loading) {
     // 当 loading 为 false 时，重置 AI 状态
     aiStatusSignal.value = 'idle';
   }
@@ -31,6 +31,7 @@ export function Start() {
 
   const onClick = useCallback(() => {
     setLoading(true);
+    clearAll();
     (async () => {
       const m = { type: MESSAGE_START, payload: {} } satisfies z.infer<typeof MessageStart>;
       browser.runtime.sendMessage(m);

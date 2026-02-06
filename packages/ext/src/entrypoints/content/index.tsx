@@ -145,7 +145,6 @@ function armListeners() {
             StartUi.unmount();
             setLoading(false);
             setProgress(null);
-            clearAll(); // 清除之前的内容和思考内容
           }
 
           const text = message.payload.text;
