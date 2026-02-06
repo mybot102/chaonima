@@ -153,13 +153,21 @@ function armListeners() {
           return false;
         }
         case MESSAGE_THINKING_CHUNK: {
-          ContentUi.mount();
-
           const message = MessageThinkingChunk.parse(m);
           const thinkingText = message.payload.text;
+          
+          // 只在收到第一个思考内容时挂载 UI 和清理启动界面
+          // 通过检查 thinkingSignal 是否为空来判断是否是第一次
+          const isFirstThinkingChunk = !document.querySelector('#chaonima-v2ex-cnt');
+          if (isFirstThinkingChunk) {
+            ContentUi.mount();
+            StartUi.unmount();
+            setLoading(false);
+            setProgress(null);
+            setAIStatus('thinking');
+          }
+          
           appendThinking(thinkingText);
-          // 更新状态为思考中
-          setAIStatus('thinking');
           return false;
         }
         default: {

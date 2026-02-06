@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CaretRight, Brain } from '@phosphor-icons/react';
 import { MemoizedMarkdown } from '../MemoizedMarkdown';
 import styles from './Thinking.module.scss';
@@ -12,8 +12,12 @@ interface ThinkingProps {
 export function Thinking({ content, done = false }: ThinkingProps) {
   const [isOpen, setIsOpen] = useState(true);
   
-  // 思考内容默认保持展开状态，不自动折叠
-  // 用户可以手动点击标题栏来折叠或展开
+  // 思考完成后自动折叠（但不隐藏），用户仍可手动展开
+  useEffect(() => {
+    if (done) {
+      setIsOpen(false);
+    }
+  }, [done]);
 
   if (!content) return null;
 
