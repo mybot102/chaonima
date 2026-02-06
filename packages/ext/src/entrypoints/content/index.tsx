@@ -158,10 +158,10 @@ function armListeners() {
           
           // 只在收到第一个思考内容时挂载 UI 和清理启动界面
           // 通过检查 thinkingSignal 的值是否为空来判断是否是第一次
-          // 注意：这里清理 StartUi 是合理的，因为在启用思考模式时，
+          // 注意：这里调用 StartUi.unmount() 清理启动界面是合理的，因为在启用思考模式时，
           // 思考内容会在主要内容之前到达，此时正是用户看到 AI 开始响应的时刻
-          const isFirstThinkingChunk = thinkingSignal.value.length === 0;
-          if (isFirstThinkingChunk) {
+          const isFirstThinking = thinkingSignal.value.length === 0;
+          if (isFirstThinking) {
             ContentUi.mount();
             StartUi.unmount();
             setLoading(false);
