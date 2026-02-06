@@ -8,7 +8,7 @@ Make sure you have Deno installed already.
 Create a `.env` file with below fields filled:
 
 ```sh
-GEMINI_API_KEY=""
+OPENAI_API_KEY=""
 API_KEYS=""
 ```
 

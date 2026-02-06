@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
 import { cors } from "hono/cors";
-import { Gemini } from "./genimi.ts";
+import { OpenAI } from "./openai.ts";
 
 const app = new Hono();
 
@@ -37,6 +37,7 @@ app.post("/api/v2ex/streamGenerateContent", async (c) => {
     id: string;
     model?: string;
     enableThinking?: boolean;
+    baseUrl?: string;
   }>();
   const id = body.id;
   if (!id) return c.json({ message: "Missing id" }, 400);
@@ -49,21 +50,26 @@ app.post("/api/v2ex/streamGenerateContent", async (c) => {
     '你的输出不要包含额外内容 (比如"好的，没问题！我来帮你总结一下。")',
   ].join("\n");
 
-  const model = body.model || "gemini-2.5-flash-preview-09-2025";
-  const enableThinking = body.enableThinking ?? false;
+  const model = body.model || "gpt-4o";
+  // const enableThinking = body.enableThinking ?? false;
+
+  const apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) {
+      return c.json({ message: "API Key not configured" }, 500);
+  }
 
   return streamText(c, async (stream) => {
     let summary = "";
     await gen(
-      Deno.env.get("GEMINI_API_KEY")!,
+      apiKey,
       instruction,
       body.text,
       model,
-      enableThinking,
       async (t) => {
         await stream.write(t);
         summary += t;
       },
+      body.baseUrl
     );
     await kv.set([id], { time: Date.now(), summary });
     stream.close();
@@ -75,15 +81,17 @@ async function gen(
   instruction: string,
   text: string,
   model: string,
-  enableThinking: boolean,
   onmessage: (message: string) => void | Promise<void>,
+  baseUrl?: string
 ) {
-  const gemini = new Gemini({ apiKey });
-  const input = Gemini.buildGenerateContentRequestBody(text, instruction, enableThinking);
-  const res = await gemini.streamGenerateContent(input, model);
-  const aig = Gemini.createAsyncIterableStreamFromGeminiResponse(res);
-  for await (const json of aig) {
-    const t = json.candidates?.[0]?.content?.parts[0]?.text;
+  const openai = new OpenAI({ apiKey, baseUrl });
+  const messages = [
+      { role: "system", content: instruction },
+      { role: "user", content: text }
+  ];
+  const res = await openai.createChatCompletion(messages, model, true);
+  const aig = OpenAI.createAsyncIterableStreamFromOpenAIResponse(res);
+  for await (const t of aig) {
     await onmessage(t);
   }
 }

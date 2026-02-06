@@ -161,12 +161,27 @@ export function formatTopicForAI(topic: V2exTopic, replies: V2exReply[]): string
     parts.push(`## 帖子内容\n${topic.content}`);
   }
   
+  // 创建一个映射，方便查找被回复的评论
+  const replyMap = new Map<number, V2exReply>();
+  replies.forEach(reply => replyMap.set(reply.id, reply));
+  
   // 评论部分
   if (replies.length > 0) {
     parts.push(`## 评论（共 ${replies.length} 条）`);
     replies.forEach((reply, index) => {
       const username = reply.member?.username || '匿名用户';
-      parts.push(`### 评论 ${index + 1} - ${username}\n${reply.content}\n`);
+      let header = `### 评论 ${index + 1} - ${username}`;
+      
+      // 如果有回复关系，添加被回复用户的用户名
+      if (reply.reply_to) {
+        const repliedReply = replyMap.get(reply.reply_to);
+        if (repliedReply) {
+          const repliedUsername = repliedReply.member?.username || '匿名用户';
+          header += ` (回复 ${repliedUsername})`;
+        }
+      }
+      
+      parts.push(`${header}\n${reply.content}\n`);
     });
   } else {
     parts.push(`## 评论\n暂无评论`);

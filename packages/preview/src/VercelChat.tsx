@@ -2,7 +2,7 @@ import { MemoizedMarkdown } from './MemoizedMarkdown';
 import { Chat, useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 
-const api = `${import.meta.env.VITE_API_URL}/api/vercel/gemini`;
+const api = `${import.meta.env.VITE_API_URL}/api/vercel/openai`;
 
 const chat = new Chat({
   transport: new DefaultChatTransport({ api }),
@@ -19,7 +19,7 @@ export function VercelChat() {
       <div>
         <button
           onClick={() => {
-            chat.sendMessage({ text: '给我写一段800字以上的文章介绍一下 Gemini' });
+            chat.sendMessage({ text: '给我写一段800字以上的文章介绍一下 OpenAI' });
           }}
         >
           send
