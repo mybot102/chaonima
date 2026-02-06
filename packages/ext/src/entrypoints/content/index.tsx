@@ -23,7 +23,6 @@ import {
   MESSAGE_AI_PROCESSING,
   MessageAIProcessing,
 } from '@/utils/message';
-import { appendText, appendThinking, clearAll } from 'preview/react';
 import * as z from 'zod';
 
 export default defineContentScript({
@@ -82,6 +81,9 @@ async function handleRetrieveComments(msg: { payload: { url: string } }) {
   } satisfies z.infer<typeof MessageUpdateInfo>);
 }
 
+// 用于追踪是否已经收到过思考内容的标志
+let hasReceivedThinking = false;
+
 function armListeners() {
   browser.runtime.onMessage.addListener((m, sender, reply) => {
     switch (m.type) {
@@ -98,13 +100,10 @@ function armListeners() {
       }
 
       case MESSAGE_REMOTE_TEXT: {
-        ContentUi.mount();
-        StartUi.unmount();
+        // 不再在页面中显示, 消息会被发送到侧边栏
+        // 但我们需要更新按钮状态
         setLoading(false);
         setProgress(null);
-        const message = MessageRemoteText.parse(m);
-        const text = message.payload.text;
-        appendText(text);
         return false;
       }
 
@@ -124,6 +123,34 @@ function armListeners() {
         setProgress(null);
         setLoading(true);
         setAIStatus('processing');
+        // 重置思考标志
+        hasReceivedThinking = false;
+        return false;
+      }
+
+      case MESSAGE_LLM_TEXT_CHUNK: {
+        // 不再在页面中显示, 消息会被转发到侧边栏
+        const message = MessageLlmTextChunk.parse(m);
+
+        if (message.payload.firstChunk) {
+          // 只更新按钮状态
+          setLoading(false);
+          setProgress(null);
+        }
+        return false;
+      }
+      
+      case MESSAGE_THINKING_CHUNK: {
+        // 不再在页面中显示, 消息会被转发到侧边栏
+        // 只在首次思考内容时更新状态
+        const message = MessageThinkingChunk.parse(m);
+        
+        if (!hasReceivedThinking) {
+          hasReceivedThinking = true;
+          setLoading(false);
+          setProgress(null);
+          setAIStatus('thinking');
+        }
         return false;
       }
 
@@ -131,42 +158,6 @@ function armListeners() {
         throw new Error(`Unknown message type: ${m.type}`);
       }
     }
-  });
-
-  browser.runtime.onConnect.addListener((port) => {
-    port.onMessage.addListener((m, port) => {
-      switch (m.type) {
-        case MESSAGE_LLM_TEXT_CHUNK: {
-          ContentUi.mount();
-
-          const message = MessageLlmTextChunk.parse(m);
-
-          if (message.payload.firstChunk) {
-            StartUi.unmount();
-            setLoading(false);
-            setProgress(null);
-            clearAll(); // 清除之前的内容和思考内容
-          }
-
-          const text = message.payload.text;
-          appendText(text);
-          return false;
-        }
-        case MESSAGE_THINKING_CHUNK: {
-          ContentUi.mount();
-
-          const message = MessageThinkingChunk.parse(m);
-          const thinkingText = message.payload.text;
-          appendThinking(thinkingText);
-          // 更新状态为思考中
-          setAIStatus('thinking');
-          return false;
-        }
-        default: {
-          throw new Error(`Unknown message type: ${m.type}`);
-        }
-      }
-    });
   });
 }
 

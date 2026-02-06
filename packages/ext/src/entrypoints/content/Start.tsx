@@ -1,5 +1,5 @@
 import { browser } from '#imports';
-import { MESSAGE_START, MessageStart } from '@/utils/message';
+import { MESSAGE_START, MessageStart, MESSAGE_OPEN_SIDEPANEL, MessageOpenSidepanel } from '@/utils/message';
 import { signal } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { Button, StarAi } from 'preview/react';
@@ -32,8 +32,21 @@ export function Start() {
   const onClick = useCallback(() => {
     setLoading(true);
     (async () => {
-      const m = { type: MESSAGE_START, payload: {} } satisfies z.infer<typeof MessageStart>;
-      browser.runtime.sendMessage(m);
+      // 打开侧边栏并自动开始任务
+      try {
+        await browser.runtime.sendMessage({ 
+          type: MESSAGE_OPEN_SIDEPANEL,
+          payload: { autoStart: true }
+        } satisfies z.infer<typeof MessageOpenSidepanel>);
+        
+        // 移除原有的 MESSAGE_START 发送，改为由 Sidepanel Ready 触发或 Sidepanel Alive Ack 触发
+        // 但为了保证 UI 状态正确，我们可能需要监听来自 background 的进度消息
+        // 上面的 setLoading(true) 已经设置了初始状态
+      } catch (error) {
+        console.error('Failed to open sidepanel:', error);
+        setLoading(false);
+        // TODO: 显示错误提示给用户
+      }
     })();
   }, []);
   const progress = progressSignal.value;

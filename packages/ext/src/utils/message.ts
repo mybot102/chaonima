@@ -93,3 +93,27 @@ export const MESSAGE_AI_PROCESSING = 'MESSAGE_AI_PROCESSING';
 export const MessageAIProcessing = z.object({
   type: z.literal(MESSAGE_AI_PROCESSING),
 });
+
+export const MESSAGE_OPEN_SIDEPANEL = 'MESSAGE_OPEN_SIDEPANEL';
+
+export const MessageOpenSidepanel = z.object({
+  type: z.literal(MESSAGE_OPEN_SIDEPANEL),
+  payload: z.object({
+    autoStart: z.boolean().optional(),
+  }).optional(),
+});
+
+export const MESSAGE_SIDEPANEL_READY = 'MESSAGE_SIDEPANEL_READY';
+export const MessageSidepanelReady = z.object({
+  type: z.literal(MESSAGE_SIDEPANEL_READY),
+});
+
+export const MESSAGE_CHECK_SIDEPANEL_ALIVE = 'MESSAGE_CHECK_SIDEPANEL_ALIVE';
+export const MessageCheckSidepanelAlive = z.object({
+  type: z.literal(MESSAGE_CHECK_SIDEPANEL_ALIVE),
+});
+
+export const MESSAGE_SIDEPANEL_ALIVE_ACK = 'MESSAGE_SIDEPANEL_ALIVE_ACK';
+export const MessageSidepanelAliveAck = z.object({
+  type: z.literal(MESSAGE_SIDEPANEL_ALIVE_ACK),
+});

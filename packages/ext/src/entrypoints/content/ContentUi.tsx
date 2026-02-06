@@ -26,7 +26,11 @@ export const ContentUi = {
       }
       #Main {
         margin: 0;
-        flex: 0 0 770px
+        flex: 0 0 770px;
+      }
+      #chaonima-v2ex-cnt {
+        flex: 1;
+        min-width: 0;
       }
       `;
     styleElement.innerHTML = overrides;

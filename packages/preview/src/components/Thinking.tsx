@@ -12,13 +12,10 @@ interface ThinkingProps {
 export function Thinking({ content, done = false }: ThinkingProps) {
   const [isOpen, setIsOpen] = useState(true);
   
-  // 当思考结束时，如果用户没有手动交互过，可能希望自动折叠？
-  // 这里我们采用简单策略：根据 done 状态的改变来触发
+  // 思考完成后自动折叠（但不隐藏），用户仍可手动展开
   useEffect(() => {
     if (done) {
       setIsOpen(false);
-    } else {
-      setIsOpen(true);
     }
   }, [done]);
 
