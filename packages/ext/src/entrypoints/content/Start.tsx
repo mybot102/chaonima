@@ -37,13 +37,15 @@ export function Start() {
         await browser.runtime.sendMessage({ 
           type: MESSAGE_OPEN_SIDEPANEL 
         } satisfies z.infer<typeof MessageOpenSidepanel>);
+        
+        // 侧边栏打开成功后，发送开始消息
+        const m = { type: MESSAGE_START, payload: {} } satisfies z.infer<typeof MessageStart>;
+        browser.runtime.sendMessage(m);
       } catch (error) {
         console.error('Failed to open sidepanel:', error);
+        setLoading(false);
+        // TODO: 显示错误提示给用户
       }
-      
-      // 发送开始消息
-      const m = { type: MESSAGE_START, payload: {} } satisfies z.infer<typeof MessageStart>;
-      browser.runtime.sendMessage(m);
     })();
   }, []);
   const progress = progressSignal.value;

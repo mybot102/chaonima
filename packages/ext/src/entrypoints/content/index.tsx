@@ -100,7 +100,7 @@ function armListeners() {
       }
 
       case MESSAGE_REMOTE_TEXT: {
-        // 不再在页面中显示，消息会被发送到侧边栏
+        // 不再在页面中显示, 消息会被发送到侧边栏
         // 但我们需要更新按钮状态
         setLoading(false);
         setProgress(null);
@@ -129,7 +129,7 @@ function armListeners() {
       }
 
       case MESSAGE_LLM_TEXT_CHUNK: {
-        // 不再在页面中显示，消息会被转发到侧边栏
+        // 不再在页面中显示, 消息会被转发到侧边栏
         const message = MessageLlmTextChunk.parse(m);
 
         if (message.payload.firstChunk) {
@@ -141,7 +141,7 @@ function armListeners() {
       }
       
       case MESSAGE_THINKING_CHUNK: {
-        // 不再在页面中显示，消息会被转发到侧边栏
+        // 不再在页面中显示, 消息会被转发到侧边栏
         // 只在首次思考内容时更新状态
         const message = MessageThinkingChunk.parse(m);
         

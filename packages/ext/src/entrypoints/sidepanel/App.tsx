@@ -18,7 +18,12 @@ import {
 export function App() {
   useEffect(() => {
     // 监听来自 background script 的消息
-    const messageListener = (message: any) => {
+    const messageListener = (
+      message: 
+        | z.infer<typeof MessageLlmTextChunk>
+        | z.infer<typeof MessageThinkingChunk>
+        | z.infer<typeof MessageRemoteText>
+    ) => {
       switch (message.type) {
         case MESSAGE_LLM_TEXT_CHUNK: {
           const msg = MessageLlmTextChunk.parse(message);
